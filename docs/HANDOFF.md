@@ -1061,3 +1061,127 @@ This drives the same auth/session/role-redirect code a browser would; only the l
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed, and its values, the test-user email addresses, and all keys were never printed in the terminal, this doc, or any commit (only non-sensitive Resend message ids appear). The temporary verification scripts were deleted (not committed). The only DB writes were 3 clearly-tagged `verify-p8` test rows, all deleted (0 remaining); no test users were created or modified (no passwords changed). All Git work remains local on branch `main`.
 
+---
+
+# Part 9 — Phase 2B Student dashboard (2026-06-15)
+
+Built a **real student dashboard at `/app`** on top of the verified Phase 2A auth. Authenticated, RLS-scoped student data with clean empty states; **no AI infrastructure** (keys/LiteLLM/Langfuse), **no mentor/admin dashboards**, no new external libraries. Public pages, lead forms, auth, logout, and role protection all still pass. **No `git push`, no remote, no deploy, no secrets/emails printed, `.env.local` never committed.**
+
+> ✅ **Result: Phase 2B passes end-to-end** — verified live for both the empty-state and the populated (seeded-then-deleted) data paths, plus full role/forms/public regression.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean; HEAD = f428759
+node -v ; npm -v                             # v22.12.0 / 10.9.0
+npm install                                  # up to date (401 pkgs); non-blocking EBADENGINE only
+npm run build                                # exit 0 (baseline)
+npm run lint                                 # exit 0 (baseline)
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# env presence verified by NAME ONLY (6 vars, all present); values never printed
+# ...code changes...
+npm run build                                # exit 0, 26 routes (/app still dynamic ƒ)
+npm run lint                                 # exit 0, no warnings/errors
+npm run dev                                  # served on :3000; verified via Node fetch + minted sessions
+```
+
+**Verification method (no headless browser available):** temporary Node harnesses (`_p9verify.mjs` / `_p9forms.mjs` / `_p9live.mjs`, run then **deleted** — never committed) read `.env.local` locally without printing secrets, minted **real sessions** for the 3 test users (`auth.admin.generateLink` + `verifyOtp`, no passwords changed), replayed the `@supabase/ssr` cookies against the dev server (exercising the real middleware + RSC + RLS path), and seeded/cleaned the populated-state test rows with the service-role client.
+
+## 2. Files changed
+
+| File | New? | Change |
+|---|---|---|
+| `src/lib/dashboard/student.ts` | ✅ new | Server data loader `getStudentDashboardData()` — RLS-scoped reads of `profiles` → `enrollments`(+`cohorts`) → `progress`; every query error-wrapped; returns identity + empty defaults on any miss. |
+| `src/components/dashboard/student/StudentOverviewCard.tsx` | ✅ new | Profile summary: name, email, role, programme status, cohort, start date, length, tier; empty-state note (role-aware for admin). |
+| `src/components/dashboard/student/ProgrammeTimeline.tsx` | ✅ new | Static 13-week / 6-module overview (from `src/content/site.ts`); highlights current week/module and layers live per-module status when `progress` rows exist. |
+| `src/components/dashboard/student/StudentTasks.tsx` | ✅ new | Open tasks/milestones from live `progress` (no fabrication); empty state otherwise; "Project submissions — Coming soon" placeholder. |
+| `src/components/dashboard/student/StudentDashboard.tsx` | ✅ new | Presentational composition (fetches nothing): overview + AI-access "Coming later" card + timeline + tasks + support CTA. |
+| `src/app/app/page.tsx` | edited | `requireRole(["student","admin"])` (unchanged gate) → loads data server-side → renders `<StudentDashboard />`. |
+| `docs/HANDOFF.md` | edited | This Part 9. |
+
+**Not changed:** auth helpers, middleware, `auth-actions.ts`, login, mentor/admin pages, `app/layout.tsx` shell, the form routes/validation/email, both existing migrations, `.gitignore`, `.env.local`. No new dependencies.
+
+## 3. Migration added or not added
+
+🟢 **No new migration — none needed.** Audited both existing migrations (`0001_init.sql`, `0002_auth_roles.sql`). The schema **already has equivalents** of the suggested model, with correct RLS:
+
+| Need | Existing table (from `0001_init.sql`) | RLS already present |
+|---|---|---|
+| cohorts | `cohorts` (`name`, `start_date`, `weeks`, `status`) | authenticated read |
+| student enrollment | `enrollments` (`student_id`→`profiles.id`, `cohort_id`, `tier_awarded`) | `is_self(student_id) or mentors_student(...) or is_admin()` |
+| student progress | `progress` (`student_id`→`profiles.id`, `week`, `module`, `deliverable`, `status`) | same own-only/admin read |
+
+Per the task ("use the suggested cohorts/student_enrollments/student_progress **only if** the repo lacks equivalents"), these were **reused**. No `0003` migration was created; no old migration was edited; no SQL was run.
+
+## 4. Migration run / manual action
+
+N/A — no migration added, so **no Supabase SQL Editor action is required** for Phase 2B. The dashboard works against the already-applied `0001`/`0002` schema.
+
+## 5. Student dashboard features implemented
+
+- **Profile/overview:** name, **email**, **role**, programme status, and (when enrolled) cohort, start date, length, certification tier.
+- **13-week programme overview** (6 modules M0–M5) with current-week/module highlight.
+- **Current week / module** indicator (from live `progress`; "Not started" otherwise).
+- **Tasks & milestones** (open items from live `progress`; empty state otherwise).
+- **Project/submission placeholder** — labelled "Coming soon".
+- **AI access placeholder** — labelled **"Coming later"**, explicitly states keys aren't issued yet (no raw provider keys, per brief).
+- **Support/help CTA** → `mailto:contact@buildai.global`.
+
+## 6. Data sources used
+
+- **Live, RLS-scoped Supabase reads** (cookie-bound SSR client, own-data only): `profiles`, `enrollments`, `cohorts`, `progress`.
+- **Static programme data** from `src/content/site.ts` (`MODULES`) for the 13-week overview — the same content the public site uses (allowed by the brief when no DB data exists). No user-specific data is fabricated.
+
+## 7. Empty states implemented
+
+- **Not enrolled:** overview shows "You're not in a cohort yet…"; admin variant: "viewing the student dashboard as an admin…".
+- **No progress:** timeline shows "Programme overview — your live progress unlocks once your cohort begins"; tasks show an enrolment-aware empty message.
+- **Error-safe:** all loader queries are wrapped; missing/empty data → identity + empty states, **never an error/500** (verified: dev log clean).
+
+## 8. Student role behavior
+
+✅ Verified live with a real student session: `/app` → **200** rendering the dashboard, **shows the student's email + role badge**, and all content markers present (`Your profile`, `13-week programme`, `AI access`, `Coming later`, `Tasks`, `Need help`, `Contact support`). `/app/mentor` → **307 → /app**; `/app/admin` → **307 → /app**. Logout (Part 8 path) unchanged. **Populated path also verified:** seeding a cohort + enrollment + week-3 `in_progress` progress row made the dashboard show **"Enrolled"**, the cohort name, **"Current: Week 3"**, the live deliverable, and the start date — then all seeded rows were deleted.
+
+## 9. Mentor / admin regression behavior
+
+✅ Unchanged. Mentor: `/app` → **307 → /app/mentor**, `/app/mentor` → **200**. Admin: `/app` → **200** (renders the student dashboard with the admin empty-state note), `/app/mentor` → **200**, `/app/admin` → **200**. Logged-out: all three `/app*` → **307 → /login**. Mentor/admin pages were not modified.
+
+## 10. Public route regression result
+
+✅ All sampled public routes → **200**: `/`, `/for-colleges`, `/for-students`, `/for-mentors`, `/contact`, `/privacy`, `/terms`.
+
+## 11. Phase 1 form regression result
+
+✅ Unchanged and working against live Supabase + Resend:
+
+| Case | pilot | student | mentor |
+|---|---|---|---|
+| **Valid** → `200 {ok:true}` + 1 row + email | ✅ | ✅ | ✅ |
+| **Honeypot** → 200, no row, no email | ✅ | — | — |
+| **Invalid** → 400, no row, no email | ✅ | — | — |
+
+Resend accepted all three valid sends (ids logged, e.g. pilot `7b603d1a…`). Exactly 1 tagged row per table (honeypot/invalid wrote none); all **3 `verify-p9` rows deleted, 0 remaining**.
+
+## 12. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes. `/app` remains dynamic (`ƒ`); marketing routes static (`○`); Middleware (`ƒ`). No type errors. (Same non-blocking Edge-Runtime advisory on the Supabase middleware import as Parts 7–8.)
+
+## 13. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 14. Remaining issues
+
+- 🟡 **Human visual pass** of `/app` in a real browser (layout/responsive/DevTools console) — server render + content fully verified by HTTP; only the visual click-through is unautomated here.
+- 🟡 **No seeded cohort/enrollment data in the live project** for the test student, so day-to-day it shows empty states (correct + intended). The populated render was verified via temporary seed-then-delete.
+- 🟡 **Edge-Runtime advisory** on the Supabase middleware import (non-blocking).
+- ⚪ **Deferred by design (out of this phase):** mentor & admin dashboards; AI key issuance/LiteLLM/Langfuse; payments; Turnstile + rate limiting; Google sign-in; production domain.
+
+## 15. Is Phase 2B complete?
+
+✅ **Yes.** `/app` is a real, protected, role-scoped student dashboard showing authenticated identity, programme overview, current-week/tasks, clearly-labelled "coming later" areas, and a support CTA — with error-safe empty states and live RLS-scoped data when present. No AI infrastructure was introduced. Mentor/admin dashboards remain the next phases.
+
+## 16. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No new migration and no SQL run against the live DB. Temp verification scripts deleted (not committed). DB writes were limited to clearly-tagged test rows + a brief seed-then-delete for the populated render — **all removed (0 remaining)**; no users created/modified. All Git work remains local on branch `main`.
+
