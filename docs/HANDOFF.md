@@ -661,3 +661,126 @@ Confirmed the `[email]` log line count was **unchanged (delta 0)** across all fo
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed or printed; no secret values (Supabase/Resend keys, recipient address) appear in this doc, terminal output, or any commit — only non-sensitive Resend message ids. Supabase writes were 4 marked test rows, all deleted. All Git work remains local on branch `main`.
 
+---
+
+# Part 6 — Final local QA before Vercel preview (2026-06-15)
+
+Final pre-deploy QA pass: every route, all internal links/assets, mobile-nav + responsive markup, the honesty/placeholder rules from the brief, and one more full forms round-trip (Supabase + Resend). **No QA issues required a code fix — docs-only change.** No `git push`, no remote, no deploy, no secrets printed.
+
+> ⚠️ **Method note:** this environment has **no headless-browser/DevTools driver**, so "browser" checks were done by driving the running dev server over HTTP and inspecting rendered HTML + component source — not by clicking in a real browser. Server/SSR behavior is fully exercised and clean; the one thing only a human can finish is a visual click-through (open the menu, drag the viewport, watch the DevTools console). Everything below says exactly how each item was verified.
+
+## 1. Commands run
+
+```bash
+git status ; node -v ; npm -v                # clean · v22.12.0 · 10.9.0
+npm install                                  # up to date (401 pkgs)
+npm run build                                # exit 0, 26 routes
+npm run lint                                 # exit 0
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# env presence by NAME ONLY (6 vars) — values never printed
+npm run dev                                  # all routes GET-checked; 75 internal links/assets crawled;
+                                             #   8 form submissions (4 valid + 4 edge) via curl
+# PostgREST (service-role creds in shell vars, never echoed): row counts, read-back, DELETE test rows
+npm run build ; npm run lint                 # exit 0 (re-confirmed; no code changed)
+```
+
+## 2. Routes checked
+
+All 21 requested routes + a 404 probe — **every one as expected**:
+
+| Route | Result | | Route | Result |
+|---|---|---|---|---|
+| `/` | 200 html | | `/contact` | 200 html (pilot form) |
+| `/programme` | 200 html | | `/privacy` | 200 html (draft-marked) |
+| `/curriculum` | 200 html | | `/terms` | 200 html (draft-marked) |
+| `/certification` | 200 html | | `/login` | 200 html (Phase 2 preview) |
+| `/for-colleges` | 200 html (pilot form) | | `/app` | 200 html (Phase 2 preview) |
+| `/for-students` | 200 html (waitlist form) | | `/app/mentor` | 200 html (Phase 3 preview) |
+| `/for-mentors` | 200 html (mentor form) | | `/app/admin` | 200 html (Phase 3 preview) |
+| `/placements` | 200 html (no-guarantee) | | `/sitemap.xml` | 200 `application/xml` (13 urls) |
+| `/partners` | 200 html (honest framing) | | `/robots.txt` | 200 `text/plain` |
+| `/about` | 200 html (founder bio) | | `/opengraph-image` | 200 `image/png` (52 KB) |
+| | | | `/twitter-image` | 200 `image/png` (52 KB) |
+| `/nonexistent-xyz` | **404** ✓ | | | |
+
+## 3. Browser console result
+
+- ✅ **Server/SSR clean:** a scan of the dev-server log across **all** page loads and all 8 form POSTs found **zero** errors, warnings, hydration mismatches, or unhandled rejections (only the intended `[email] Resend accepted …` lines).
+- ⚠️ **Client DevTools console not captured** (no headless browser here). No hydration-risk patterns were found in code review. **Recommend a 2-minute human pass** (open `/` and a couple of inner pages with DevTools open) to formally tick the brief §12 "no console errors" box.
+
+## 4. Mobile / responsive result
+
+- ✅ `<meta name="viewport" content="width=device-width, initial-scale=1">` present.
+- ✅ Responsive structure correct in source: desktop nav is `hidden … md:flex` (hidden below `md`), and `<MobileNav>` is `md:hidden` — on mobile the header shows logo + "Run a Pilot" + hamburger, with no missing affordance/dead zone.
+- ✅ No external links; 75/75 internal links + assets resolve (see §"Links" in #13 risks = none). OG/Twitter images render as real 52 KB PNGs.
+- ⚠️ **Pixel-level layout/overflow at tablet/mobile widths** needs a human eye (can't measure rendered layout headlessly). No overflow-prone patterns spotted in review; the giant Anton display type is the thing to glance at on a narrow screen.
+
+## 5. Mobile nav result
+
+Verified from `MobileNav.tsx` (client component) + the rendered `/` markup — all four requirements implemented:
+
+| Requirement | Evidence |
+|---|---|
+| Opens / closes (toggle) | `onClick={() => setOpen((v) => !v)}`; icon swaps Menu ⇄ X |
+| **Escape** closes | `keydown` listener: `if (e.key === "Escape") setOpen(false)` (added only while open) |
+| **Link click** closes | each `<Link onClick={() => setOpen(false)}>` |
+| a11y wiring | button `aria-expanded`, `aria-controls="mobile-menu"`, dynamic `aria-label`; menu `id="mobile-menu"` matches (all present in SSR HTML) |
+
+⚠️ The actual open/close/Escape *interaction* runs client-side — implemented and SSR-wired correctly, but a real tap-through is the human step.
+
+## 6. Form test result
+
+| Case | pilot (×2: colleges + contact) | student | mentor |
+|---|---|---|---|
+| Valid | 200 `{ok:true}` | 200 | 200 |
+| Honeypot | 200 (dropped) | — | — |
+| Invalid | 400 | 400 | — |
+| Malformed JSON | — | — | 400 |
+| Wrong method (GET) | 405 | — | — |
+
+All four pages serve their form; `/contact` reuses the pilot-inquiry flow. Client errors stay generic; no Supabase/Resend internals leak.
+
+## 7. Supabase result
+
+✅ Valid submissions created rows (tables started at 0): `pilot_inquiries` **2** (colleges + contact), `student_waitlist` **1**, `mentor_applications` **1**. Honeypot/invalid/malformed wrote **nothing** (honeypot marker query → `[]`; exact totals 2/1/1).
+
+## 8. Resend result
+
+✅ All four valid submissions were **accepted by Resend** with message ids (captured server-side):
+`59519d91-…` (pilot colleges), `d7c0091c-…` (pilot contact), `f20afbc9-…` (student), `05773770-…` (mentor). Edge cases sent nothing. *(Final inbox arrival + domain verification remain the operator step noted in Part 5 §7/§12.)*
+
+## 9. Test data cleanup result
+
+✅ All **4** `VERIFY-P6` rows deleted afterward; `pilot_inquiries` / `student_waitlist` / `mentor_applications` all back to **0 rows**. **No fake leads remain.** (The 4 test emails to `LEAD_NOTIFICATION_TO` are subject-tagged `VERIFY-P6` and can be ignored/deleted in the inbox.)
+
+## 10. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes (3 API dynamic `ƒ`, 23 static `○`). No type errors.
+
+## 11. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 12. Honesty / launch-copy compliance (brief §0/§13)
+
+- ✅ **No fabricated college/client claims.** The only `IIT` string is the **founder's bio** on `/about` ("Sharad Agrawal — IIT Bombay (Masters), Cornell MBA") — a credential, not a customer claim. `/partners` shows honest "pilot colleges forming now" framing.
+- ✅ **No job guarantees** — every `guarantee` occurrence is a *negation* ("No job guarantee", "does not guarantee jobs", "Opportunities, not guarantees").
+- ✅ **No forbidden domains** — no `buildai.in` / `meetskybloom.com`; contact is `contact@buildai.global` (mailto verified).
+- ✅ **Placeholders are intentional & marked** — `/privacy` + `/terms` render "Draft placeholder — replace …"; `/login` + `/app*` are labelled Phase 2/3 previews. No stray `lorem`/`TODO`/"coming soon". (Form `placeholder=` attributes are normal input hints.)
+
+## 13. Remaining launch risks
+
+- 🟡 **Privacy/Terms are draft stubs** (clearly marked). Fine for a preview; replace with reviewed DPDP-compliant copy **before** Phase-2 query logging (brief §13).
+- 🟡 **Resend domain not verified** — `from` is `onboarding@resend.dev`; verify `buildai.global` + switch to `contact@buildai.global` for production deliverability, and confirm the test emails actually landed.
+- 🟡 **Human final pass** still advisable: real-device responsive look + DevTools console + tap the hamburger (the only items not coverable headlessly).
+- ⚪ **Deferred by design (out of scope):** Turnstile + rate limiting (brief §4); 2 moderate `npm audit` advisories; local root-owned `~/.npm` cache (machine-only, not on Vercel). OG card uses a system bold (not Anton) — cosmetic.
+- ✅ **No broken links, no missing assets, no console/SSR errors, no overflow patterns found.** No QA issue needed a code change.
+
+## 14. Ready for GitHub push + Vercel preview?
+
+**Yes — ready for GitHub push and a Vercel preview deploy.** All routes serve, links/assets resolve, forms persist rows + send notifications, edge cases are safe, the copy honors the brief's honesty rules, and `build`/`lint` are green. **When you deploy (left to you):** push to GitHub → import to Vercel → add the same 6 env vars (Supabase + Resend) to **Production + Preview** → (recommended) finish Resend domain verification and the human visual pass.
+
+## 15. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed or printed; no secret values appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). The only DB writes were 4 marked test rows, all deleted. All Git work remains local on branch `main`.
+
