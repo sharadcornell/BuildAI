@@ -1477,3 +1477,109 @@ Resend accepted all three valid sends (ids logged, e.g. pilot `dec76c0a…`). Ex
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No new migration and no SQL run against the live DB. The service-role key is used only server-side (loader reads via the admin RLS cookie client; the handled write via the server-only service-role client) and never reaches the browser. Temp verification scripts deleted (not committed). DB writes were limited to clearly-tagged `verify-p11` / `verify-p11form` test rows (+ one handled flip on a seeded row) — **all removed (0 remaining)**; no users created/modified. All Git work remains local on branch `main`.
 
+---
+
+# Part 12 — Phase 2E Full local platform QA (2026-06-15)
+
+Full local regression QA of the whole platform (public site + auth + all three dashboards + lead management + Phase-1 forms + security) before starting the AI layer. **QA only — no product features added; no code fix was required (zero real bugs found).** **No `git push`, no remote, no deploy, no secrets/emails printed, `.env.local` never committed.**
+
+> ✅ **Result: the full local platform passes QA and is ready for the next phase (AI layer).** Every checked item passed. Two "FAIL" lines during the run were **test-harness artifacts**, not product bugs (explained in §4/§5–7).
+
+## 1. Commands run
+
+```bash
+git status                                   # clean; HEAD = 17d45ab
+node -v ; npm -v                             # v22.12.0 / 10.9.0
+npm install                                  # up to date (401 pkgs); non-blocking EBADENGINE only
+npm run build                                # exit 0, 26 routes
+npm run lint                                 # exit 0, no warnings/errors
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# env presence verified by NAME ONLY (6 vars, all present); values never printed
+# static security greps (service-role usage, client-bundle scan)
+npm run dev                                  # served on :3000
+# QA harnesses (Node fetch + minted sessions): _p12public / _p12auth / _p12data — run then DELETED (never committed)
+```
+
+**Method (no headless browser available):** temporary Node harnesses read `.env.local` locally without printing secrets, minted **real sessions** for the 3 test users (`generateLink` + `verifyOtp`, no passwords changed), replayed `@supabase/ssr` cookies against the dev server (real middleware + RSC + RLS), and seeded/cleaned tagged rows with the service-role client. The one item only a human can finish is a visual click-through (open the hamburger, eyeball responsive layout, watch the DevTools console).
+
+## 2. Was the 0003 mentor policy applied?
+
+🔴 **No — `0003_mentor_dashboard.sql` has NOT been applied** to the live project (detected behaviorally: with a mentor assigned to a student whose profile name was temporarily tagged, the mentor session still could not read the name → RLS is withholding it, i.e. the policy isn't present). **Consequence:** mentor-facing **student names remain withheld**; the mentor dashboard otherwise works fully (assigned count, cohort, progress all live). I did **not** run the SQL (CLI not linked; per rules). To enable names later: Supabase Dashboard → SQL Editor → run `supabase/migrations/0003_mentor_dashboard.sql` (additive, idempotent).
+
+## 3. Public routes checked
+
+✅ All **200**: `/`, `/programme`, `/curriculum`, `/certification`, `/for-colleges`, `/for-students`, `/for-mentors`, `/placements`, `/partners`, `/about`, `/contact`, `/privacy`, `/terms`, `/login`. ✅ `/sitemap.xml` → `application/xml`, `/robots.txt` → `text/plain`, `/opengraph-image` & `/twitter-image` → `image/png`. ✅ Unknown route → **404**. ✅ **13/13 internal links resolve** (0 broken); mobile-nav hamburger + `aria-controls="mobile-menu"`/`aria-expanded` present; viewport meta present. ✅ **Honesty:** no forbidden domains (`buildai.in`/`meetskybloom.com`); contact = `buildai.global`; privacy + terms still marked **draft**; partners page makes no fake IIT client claim; **no positive job-guarantee** (the only "guarantee" string is the negation *"We don't sell certificates or guarantee jobs"* on `/about` — compliant; a harness regex initially flagged it because the apostrophe is HTML-encoded — **false positive, not a bug**).
+
+## 4. Auth matrix result
+
+✅ All correct. **Logged-out:** `/app`, `/app/mentor`, `/app/admin` → **307 → /login**. **Student:** `/app` 200 (email + role + dashboard), `/app/mentor` → /app, `/app/admin` → /app. **Mentor:** `/app/mentor` 200 (email + role + dashboard), `/app` → /app/mentor, `/app/admin` → /app/mentor. **Admin:** `/app`, `/app/mentor`, `/app/admin` all 200 (admin `/app/admin` shows lead management + email + role). **Logout:** `signOut()` clears the session cookie for all three roles.
+
+## 5. Student dashboard result
+
+✅ **Empty state** renders ("not in a cohort"/programme overview). ✅ **Populated path** (seeded cohort + enrollment + week-5 in-progress): shows **Enrolled**, the cohort name, and **Week 5**; seeded rows deleted. *(Note: in the combined first pass this read FAIL because the preceding global-`signOut` logout test had revoked the reused session cookie → redirect to /login; re-run with a fresh session → PASS. Test-ordering artifact, not a product bug.)*
+
+## 6. Mentor dashboard result
+
+✅ **Empty state** renders ("No students are assigned"). ✅ **Populated path** (seeded assignment + cohort + week-6 progress): shows **1 assigned**, the cohort name, **Week 6**. ✅ **0003 behavior confirmed:** because `0003` isn't applied, the assigned student's **name is withheld** while everything else shows — exactly the documented graceful-degradation. Seeded rows deleted; the temporarily-tagged student name was **restored**. *(Same fresh-session caveat as §5.)*
+
+## 7. Admin dashboard result
+
+✅ **Empty state** renders (per-table "No … yet"). ✅ Seeded tagged **pilot/student/mentor leads all appear**. ✅ Lead-management: handled **toggle wired** (Open → "Mark handled"), and after flipping `handled` the **"Reopen"** control renders. Seeded leads deleted (0 remaining). *(Same fresh-session caveat as §5.)*
+
+## 8. Admin lead-management result
+
+✅ View + status display + non-destructive **handled/reopen** all verified live (see §7). The mutation runs through the admin-gated `setLeadHandled` server action (`requireRole(["admin"])` + table allowlist + UUID check + server-only service-role write; no delete). CSV export remains a labelled "coming later" item.
+
+## 9. Phase 1 form regression result
+
+✅ All paths correct against live Supabase + Resend:
+
+| Case | Result |
+|---|---|
+| Valid pilot (×2: `/for-colleges` + `/contact`) | **200 `{ok:true}`** + row + email |
+| Valid student waitlist | **200** + row + email |
+| Valid mentor application | **200** + row + email |
+| Honeypot (valid + `hp`) | **200** silently dropped, **no row, no email** |
+| Invalid payload | **400 `Invalid submission.`**, no row/email |
+| Malformed JSON | **400**, no row/email |
+| Wrong method (GET) | **405**, no row/email |
+
+Row read-back: pilot **2**, student **1**, mentor **1** (honeypot/invalid/malformed wrote **none**); `/contact` confirmed to reuse the pilot-inquiry flow. **Resend accepted all 4 valid sends** (dev log: 4 `[email] Resend accepted` lines). All `verify-p12form` rows deleted.
+
+## 10. Security checks
+
+✅ `.env.local` not staged / not tracked (git-ignored). ✅ `SUPABASE_SERVICE_ROLE_KEY` referenced **only** in `src/lib/supabase/server.ts`; `getSupabaseAdmin` imported only by the 3 form API routes + `admin-actions.ts` (all server). ✅ **No `"use client"` file imports the admin/service-role client.** ✅ Client bundle scan (`.next/static`): no `service_role`/`SERVICE_ROLE` token **and** the service-role key **value is absent**. ✅ Students can't reach mentor/admin data; mentors can't reach admin data (route redirects + RLS). ✅ Admin-only `setLeadHandled` gated by `requireRole(["admin"])` (+ allowlist + UUID). ✅ **No destructive delete** action exists in dashboard code. ✅ No stack traces / Supabase internals leak (invalid submit returns generic `Invalid submission.`).
+
+## 11. Test data cleanup result
+
+✅ **Zero residual test data.** Final sweep across `pilot_inquiries`/`student_waitlist`/`mentor_applications` (by `verify-p12*` email), `cohorts` (by `VERIFY-P12` name), and `profiles` (by tagged name) → **all 0**. The temporarily-tagged student profile name was restored to its original value. No test users created or modified.
+
+## 12. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes (`/app`, `/app/mentor`, `/app/admin` dynamic `ƒ`; marketing static `○`; Middleware `ƒ`). No type errors. (Same non-blocking Edge-Runtime advisory on the Supabase middleware import as Parts 7–11.)
+
+## 13. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 14. Browser / server error result
+
+✅ **Server/dev log clean** across the entire QA run — zero errors, exceptions, unhandled rejections, or 500s; only the intended `[email] Resend accepted …` lines. ⚠️ Client DevTools console not captured (no headless browser) — a short human visual pass remains advisable.
+
+## 15. Remaining issues
+
+- 🟡 **`0003_mentor_dashboard.sql` not applied** — mentor student-names withheld until run (optional; dashboard works without it).
+- 🟡 **CSV export** still deferred (labelled "coming later").
+- 🟡 **Human visual pass** (responsive layout, hamburger tap, DevTools console) — the only items not coverable headlessly.
+- 🟡 **Edge-Runtime advisory** on the Supabase middleware import (non-blocking build warning).
+- ⚪ **Deferred by design:** LiteLLM/Langfuse/AI key issuance; payments; Turnstile + rate limiting; Google sign-in; production domain.
+- ✅ **No product bugs found; no code change required.**
+
+## 16. Is the full local platform ready for the next phase?
+
+✅ **Yes.** Public site, auth + role protection, all three role dashboards (with empty + populated data paths), admin lead management, Phase-1 lead capture + email, and the security posture all pass locally. The platform is ready to begin the **AI layer** (LiteLLM key issuance + Langfuse traces + usage/cost), which the admin "coming later" cards already scaffold toward. Recommended before/with that work: run `0003`, and do a one-time human visual pass.
+
+## 17. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No SQL was run against the live DB (`0003` left to the operator). The service-role key stayed server-side and was confirmed absent from the client bundle. Temp QA scripts deleted (not committed). DB writes were limited to clearly-tagged `verify-p12*` test rows + a transient student-name tag — **all removed/restored (0 residual)**; no users created/modified. This was a docs-only change. All Git work remains local on branch `main`.
+
