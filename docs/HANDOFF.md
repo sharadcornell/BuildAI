@@ -4,6 +4,8 @@
 **Scope:** Audit only (install, build, lint, dev-server route inspection, forms + API routes). No feature work.
 **Result:** ✅ Build green · ✅ Lint clean · ✅ All 23 routes serve · ✅ All 3 form APIs work. One real, deploy-blocking install error was found and fixed (see *Files changed*).
 
+> **Follow-up (same day):** the repo was committed to a local Git baseline and four Phase-1 deploy-readiness fixes were applied (honeypot, sitemap, OG/Twitter image, mobile nav). See **[Part 2 — Phase 1 deploy-readiness](#part-2--phase-1-deploy-readiness-2026-06-15)** at the bottom for the current state. **No `git push` / deploy was performed — all Git work is local.**
+
 ---
 
 ## Environment
@@ -193,3 +195,111 @@ No copy, strategy, brand, component, or architecture changes were made.
 12. `npm rm -g next` to remove the stray global `next@15.1.3` that masked the missing local install.
 13. `npm audit` — resolve the 2 moderate advisories before launch.
 14. Plan the `next lint` → ESLint CLI migration ahead of a Next 16 upgrade.
+
+---
+
+# Part 2 — Phase 1 deploy-readiness (2026-06-15)
+
+Local Git baseline + four Phase-1 fixes. **No auth, dashboards, LiteLLM, Langfuse, payments, or role routing were touched** (out of scope). **No `git push`, no deploy, no external service connected.**
+
+## Commands run
+
+```bash
+# Git (local only)
+git status                       # → not a repo
+git init                         # → branch: main
+git add .
+git commit -m "Establish clean BuildAI website baseline"   # → 2469624  (113 files; no node_modules/.next; only empty .env.example)
+
+# npm cache permanent fix — ATTEMPTED, could not complete (needs a password)
+sudo -n chown -R 501:20 ~/.npm   # → "sudo: a password is required"  (32 root-owned files remain)
+
+# Clean install + verify (temp user-owned cache used ONLY to dodge the root-owned shards)
+rm -rf node_modules
+npm install --cache /tmp/npm-cache-buildai   # → exit 0
+npm run build                    # → exit 0
+npm run lint                     # → exit 0
+
+# After the four fixes
+npm run build                    # → exit 0 (26 routes)
+npm run lint                     # → exit 0 (No ESLint warnings or errors)
+npm run dev                      # → manual route + form checks (below)
+
+git add .
+git commit -m "Prepare Phase 1 website for preview deploy"  # → <second local commit>
+```
+
+## Git commits created (local only)
+
+| Commit | Message | Contents |
+|---|---|---|
+| `2469624` | `Establish clean BuildAI website baseline` | Full working tree at audit-fix state (source, `package.json` with the `@types` fix, generated `package-lock.json`, docs, reference/). |
+| *(second)* | `Prepare Phase 1 website for preview deploy` | The four Phase-1 fixes + this handoff update. |
+
+Branch: **`main`**. **`git push` was NOT run. No remote was added. Nothing was published to GitHub/Vercel.**
+
+## Files changed (Part 2)
+
+| File | Change |
+|---|---|
+| `src/lib/validation.ts` | Honeypot schema made permissive (`z.string().optional().default("")`) so the routes' existing `if (data.hp)` guard can fire. |
+| `src/app/api/*/route.ts` | **Unchanged** — all three already had `if (data.hp) return {ok:true}`; the schema change activates it consistently. |
+| `src/app/sitemap.ts` | **New** — generates `/sitemap.xml` for the 13 public marketing routes. |
+| `src/app/opengraph-image.tsx` | **New** — 1200×630 brand OG card via `next/og` (no new dependency). |
+| `src/app/twitter-image.tsx` | **New** — re-exports the OG card for `summary_large_image`. |
+| `src/components/site/MobileNav.tsx` | **New** — client hamburger menu (`md:hidden`); Escape-to-close, close-on-link-click, aria-expanded/controls. |
+| `src/components/site/Nav.tsx` | Wired `<MobileNav />` next to the CTA; **desktop nav untouched**. |
+| `docs/HANDOFF.md` | This Part 2 update. |
+
+## What was fixed
+
+1. **Honeypot logic inconsistency → fixed.** Previously the schema's `z.string().max(0)` rejected any filled honeypot at parse time (400), making the route's `if (data.hp) return {ok:true}` dead code. Now a filled honeypot passes validation and each route **silently returns `200 {ok:true}` and skips the DB insert + email** — the bot thinks it succeeded, spam is dropped. Applied uniformly to all three forms (the routes already shared the guard; only the schema needed changing).
+2. **Sitemap added.** `src/app/sitemap.ts` emits all 13 public routes at `https://buildai.global/...`. `/sitemap.xml` now returns **200 `application/xml`**; the existing `public/robots.txt` already points to it (URL matches exactly).
+3. **OG/Twitter share image added.** `opengraph-image.tsx` (+ `twitter-image.tsx`) renders a brand-consistent red/black/yellow card. Next injects `og:image` + `twitter:image` (+ width/height/alt) and `twitter:card=summary_large_image` automatically; `metadataBase` makes the URLs absolute in production.
+4. **Mobile navigation added.** The nav links were `hidden md:flex` with no mobile affordance. Added a `md:hidden` hamburger that toggles a full-width menu of the nav links. Keyboard-accessible (native `<button>`, `aria-expanded`, `aria-controls`, Escape closes), closes on link click. Desktop nav is byte-for-byte unchanged.
+
+## Build result
+
+✅ `npm run build` → exit 0. 26 routes prerendered, including new `/sitemap.xml`, `/opengraph-image`, `/twitter-image` (all static `○`). No type errors.
+
+## Lint result
+
+✅ `npm run lint` → exit 0 — "No ESLint warnings or errors."
+
+## Routes checked (dev server)
+
+| Route | Result |
+|---|---|
+| `/` | 200 ✓ — og:image + twitter:image meta present; mobile-nav button markup (`aria-controls="mobile-menu"`, `aria-expanded="false"`, `aria-label="Open menu"`) present |
+| `/for-colleges` | 200 ✓ (pilot form) |
+| `/for-students` | 200 ✓ (waitlist form) |
+| `/for-mentors` | 200 ✓ (mentor form) |
+| `/contact` | 200 ✓ (pilot form) |
+| `/sitemap.xml` | **200 `application/xml`**, 13 `<loc>` entries ✓ |
+| `/robots.txt` | 200 ✓ — `Sitemap: https://buildai.global/sitemap.xml` (matches) |
+| `/opengraph-image` | 200 `image/png` ✓ |
+| `/twitter-image` | 200 `image/png` ✓ |
+| **Honeypot** (valid fields + filled `hp`) | **200 `{ok:true}`, silently dropped** on all 3 routes — dev log confirms no spam row was logged ✓ |
+| Normal submit | 200 `{ok:true}` (+ DB-skip log) ✓ |
+| Invalid submit | 400 ✓ |
+| Mobile nav | hamburger button + `aria-*` server-rendered; toggle/Escape/close-on-click implemented in `MobileNav.tsx` (interactive toggle verified by code, not a headless browser) |
+
+Dev-server log was clean — no errors, hydration warnings, or unhandled rejections (only the intended graceful-degradation logs).
+
+## Remaining issues / notes
+
+- 🟠 **npm cache still has 32 root-owned files** — `sudo chown -R 501:20 ~/.npm` **must be run manually** (sudo needs a password; can't be done from here). Local-machine only — **does NOT affect Vercel**.
+- 🟡 **Node 20 not installed / `nvm` not loaded** in this shell; built and verified on **Node v22.12.0** (clean). `.nvmrc` still pins 20 — fine for Vercel (it reads `.nvmrc`); install Node 20 locally if you want to match exactly.
+- 🟡 **OG card uses a bold system sans, not Anton** — deliberate, to keep the image self-contained (no runtime font fetch). Brand colors are correct. Swap in the Anton font binary later if exact type is wanted.
+- ⚪ **Still deferred (not in Part-2 scope):** Cloudflare Turnstile + server-side rate limiting on forms (brief §4); reviewed DPDP-compliant `/privacy` + `/terms` copy before Phase-2 query logging (brief §13); the `npm audit` 2 moderate advisories.
+
+## Ready for Vercel preview deploy?
+
+**Yes — the code is preview-deploy-ready, but the deploy itself was intentionally NOT performed** (per instructions: no push, no Vercel/GitHub connection).
+
+- ✅ Clean `npm run build` + `npm run lint`; 26 routes; no console errors.
+- ✅ `package-lock.json` is committed → Vercel's `npm install` is reproducible and **won't hit the original ERESOLVE** (the `@types/react*` fix is locked in).
+- ✅ The npm-cache permission issue is local-only; Vercel builds in a clean environment.
+- ✅ Forms degrade gracefully with no env set (log + `{ok:true}`), so a preview deploy works before Supabase/Resend are configured.
+- ▶️ **To actually deploy (when you choose):** push to GitHub → import to Vercel → add env vars (Production + Preview). All of that is left to you.
+

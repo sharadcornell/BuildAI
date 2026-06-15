@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { NAV_LINKS } from "@/content/site";
 import { Button } from "@/components/ui/Button";
+import { MobileNav } from "./MobileNav";
 
 export function Nav() {
   return (
@@ -20,9 +21,12 @@ export function Nav() {
             </Link>
           ))}
         </nav>
-        <Button href="/for-colleges" className="px-4 py-2 shadow-none">
-          Run a Pilot
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button href="/for-colleges" className="px-4 py-2 shadow-none">
+            Run a Pilot
+          </Button>
+          <MobileNav />
+        </div>
       </div>
     </header>
   );

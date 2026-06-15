@@ -3,7 +3,10 @@ import { z } from "zod";
 const consent = z.literal(true, {
   errorMap: () => ({ message: "Please accept to continue." }),
 });
-const honeypot = z.string().max(0, "Bot detected.").optional().default("");
+// Honeypot: accept any value at validation so a bot is never told it failed.
+// The API routes silently return { ok: true } (and skip the DB insert + email)
+// when this field is filled — see each route's `if (data.hp)` guard.
+const honeypot = z.string().optional().default("");
 
 export const pilotInquirySchema = z.object({
   college: z.string().min(2, "Required"),
