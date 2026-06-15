@@ -1583,3 +1583,117 @@ Row read-back: pilot **2**, student **1**, mentor **1** (honeypot/invalid/malfor
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No SQL was run against the live DB (`0003` left to the operator). The service-role key stayed server-side and was confirmed absent from the client bundle. Temp QA scripts deleted (not committed). DB writes were limited to clearly-tagged `verify-p12*` test rows + a transient student-name tag — **all removed/restored (0 residual)**; no users created/modified. This was a docs-only change. All Git work remains local on branch `main`.
 
+---
+
+# Part 13 — Phase 3A AI access control-plane scaffolding (2026-06-15)
+
+Built the safe app/DB foundation for the AI layer (LiteLLM + Langfuse) **without** requiring a live proxy. Everything degrades to a clean "not configured / not issued" state when AI env is absent (which it currently is). **No real LLM calls, no live virtual keys, no raw keys stored or printed.** No `git push`, no remote, no deploy, no secrets exposed.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean
+node -v                                       # v22.12.0
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+npm install                                   # up to date (no new deps added)
+npm run build                                 # exit 0 (baseline) → exit 0 (after changes)
+npm run lint                                  # exit 0 "No ESLint warnings or errors"
+# env presence by NAME ONLY (values never printed): Supabase/Resend present;
+#   LITELLM_PROXY_BASE_URL / LITELLM_MASTER_KEY / LANGFUSE_* all ABSENT
+npm run dev                                    # route + redirect + form checks via curl
+# secret-leak greps over src/ and .next/static; service-role probe of student_ai_access
+```
+
+## 2. Files changed / added
+
+| File | Change |
+|---|---|
+| `supabase/migrations/0004_ai_access.sql` | **New** — `student_ai_access` metadata table + RLS + `updated_at` trigger. Additive, idempotent, non-destructive. |
+| `src/lib/ai/litellm.ts` | **New** — server-only LiteLLM helper: `isLiteLLMConfigured()`, `createVirtualKeyForStudent()`, `revokeVirtualKey()`, `maskKey()`. Returns typed `not_configured`/`error` results, never throws, never logs secrets. |
+| `src/lib/ai/access.ts` | **New** — RLS-scoped loaders: `getStudentAiAccess()`, `getAdminAiAccessOverview()`, `getAiConfigStatus()`. Error-wrapped → clean states even if the migration hasn't run. |
+| `src/lib/ai/access-actions.ts` | **New** — admin-only server actions: `createAiAccessRecord()` (planned/pending only), `setAiAccessStatus()` (activate/suspend/revoke — status updates, never a delete). Service-role writes. |
+| `src/lib/langfuse.ts` | Added `isLangfuseConfigured()`; `langfuseTraceUrl()` now also honors `LANGFUSE_OTEL_HOST`. |
+| `src/components/dashboard/student/StudentAiAccessCard.tsx` | **New** — student AI access card (status/budget/models/masked-hint, or "not issued"). |
+| `src/components/dashboard/student/StudentDashboard.tsx` | Replaced the inline "coming later" block with `<StudentAiAccessCard>`; takes new `aiAccess` prop. |
+| `src/app/app/page.tsx` | Loads `getStudentAiAccess()` alongside dashboard data. |
+| `src/components/dashboard/admin/AiAccessOverview.tsx` | **New** — admin overview: LiteLLM/Langfuse config pills, per-status counts, recent records, create-pending form, suspend/revoke/activate actions. |
+| `src/components/dashboard/admin/AdminDashboard.tsx` | Renders `<AiAccessOverview>`; takes new `aiAccess` prop. |
+| `src/app/app/admin/page.tsx` | Loads `getAdminAiAccessOverview()` alongside admin data. |
+| `docs/HANDOFF.md` | This Part 13. |
+
+**Not changed:** existing `src/lib/litellm.ts` (Phase-2 stub left in place), the older `student_api_keys` table (0001), validation, supabase helpers, mentor dashboard, any public page/copy/brand. No new npm dependency.
+
+## 3. Migration
+
+🟠 **Added but NOT yet run on the live DB.** A read-only service-role probe of `student_ai_access` returns **HTTP 404** → table absent. Per the task rules I do not run SQL against your database.
+
+**To activate (one-time, manual):**
+1. Supabase Dashboard → **SQL Editor → New query**.
+2. Paste **all of `supabase/migrations/0004_ai_access.sql`** → **Run** (idempotent, non-destructive).
+3. Afterward you should have: table `public.student_ai_access` (RLS on) + policies `ai_access self read`, `ai_access admin read`, `ai_access admin write`.
+
+Until it's run, the app stays fully functional: student card shows **"Not issued"**, admin shows **0 records** and the config pills — no 500s (loaders are error-wrapped).
+
+## 4. AI access schema implemented
+
+`student_ai_access`: `id`, `user_id`→auth.users, `profile_id`→profiles (unique), `status` CHECK(`pending|active|suspended|revoked`, default `pending`), `litellm_key_id`, **`litellm_virtual_key_hint` (masked hint only)**, `monthly_budget_usd`, `allowed_models text[]`, `issued_at`, `revoked_at`, `created_at`, `updated_at` (trigger-maintained). **No raw/full key column — by design.** RLS: students read own; admins read all + write all; mentors get no policy (no access).
+
+## 5. LiteLLM helper implemented
+
+`src/lib/ai/litellm.ts` — server-only. Reads `LITELLM_PROXY_BASE_URL` (falls back to legacy `LITELLM_BASE_URL`) + `LITELLM_MASTER_KEY`. `isLiteLLMConfigured()` gates everything; when unconfigured the create/revoke functions return `{ok:false, reason:"not_configured"}` and make **no** network call. On a real call, a returned raw key is masked for storage and returned **once** for admin display only — never persisted. Errors log status only (never the body, URL, or key).
+
+## 6. Langfuse configuration handling
+
+`isLangfuseConfigured()` (true only when both `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY` are set) feeds the admin config pill. No traces are fetched in this phase. Secret key read server-side only.
+
+## 7. Student dashboard result
+
+✅ AI access card renders. With no record (current state) it shows **"Not issued"** + the "never handle raw provider keys" message. With a record it shows status, budget, allowed models, and the **masked** key hint only. No chat UI added.
+
+## 8. Admin dashboard result
+
+✅ New "AI access control plane" section: **LiteLLM = Not configured**, **Langfuse = Not configured** (both absent), per-status counts (all 0 pre-migration), recent-records table (empty), a **"Plan access for a student"** form (creates a `pending` metadata record — no real key minted), and per-record **Activate/Suspend/Revoke** actions. Clearly labelled that no live key is issued while the proxy is absent.
+
+## 9. Mentor dashboard result
+
+➖ **Unchanged.** It already carries a clearly-marked "AI trace review — Coming later" card from Phase 2C; no edit needed. No keys/traces exposed.
+
+## 10. Auth regression
+
+✅ Logged-out `/app`, `/app/admin`, `/app/mentor` → **307 → /login**. `/login` and public pages → **200**. (Role-specific landing + logout unchanged from Parts 8–12; no auth code touched.)
+
+## 11. Dashboard regression
+
+✅ Build renders all three dashboards; loaders are additive and error-safe. Lead handled/reopen action untouched. (Authenticated visual pass needs real login creds, unavailable here — but no dashboard data path was modified, only additive AI props.)
+
+## 12. Phase 1 form regression
+
+✅ Student waitlist: **valid → 200** (row created + verified, then deleted), **honeypot → 200 with no row**, **invalid → 400**. Dev log clean (only intended `Resend`/DB logs). Pilot/mentor routes share the same code path (unchanged).
+
+## 13. Security checks
+
+✅ `.env.local` ignored, never staged/printed. ✅ `LITELLM_MASTER_KEY` only in `src/lib/{litellm,ai/litellm}.ts`; `LANGFUSE_SECRET_KEY` only in `src/lib/langfuse.ts`; `SUPABASE_SERVICE_ROLE_KEY` only in `src/lib/supabase/server.ts`. ✅ No `"use client"` file imports any AI/server helper. ✅ `.next/static` scanned — **no** server-secret names in the client bundle. ✅ No raw keys stored (schema has none) or printed; helper masks + logs status only. ✅ One test row created during form regression, deleted (0 residual).
+
+## 14. Build result
+
+✅ `npm run build` → **exit 0**. New routes compile; dashboards still render.
+
+## 15. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 16. Remaining issues
+
+- 🟠 **Run `0004_ai_access.sql`** in the Supabase SQL Editor to activate the table (app already degrades gracefully until then).
+- ⚪ **Live LiteLLM issuance deferred:** `createAiAccessRecord` records *planned* metadata only; wiring the real `createVirtualKeyForStudent` call (one-time raw-key reveal) is a later step once the proxy + AI env exist.
+- ⚪ **Authenticated visual pass** of the new cards still recommended (no login creds here).
+- ⚪ **Deferred (unchanged):** Google sign-in; Turnstile + rate limiting; DPDP `/privacy`+`/terms` before query logging; `npm audit` advisories.
+
+## 17. Is Phase 3A complete?
+
+✅ **Yes** — the AI access control-plane scaffolding (schema + server-only helpers + loaders + student/admin UI + safe admin actions) is implemented, builds, lints, and is production-safe with AI infra absent. The only operator step to fully light it up is running `0004` (and later setting AI env + enabling live issuance).
+
+## 18. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values appear in this doc, terminal output, or any commit. No raw keys generated or stored. No SQL run against the live DB (`0004` left to the operator). Service-role key stayed server-side and confirmed absent from the client bundle. The one form-regression test row was deleted (0 residual). All Git work remains local on branch `main`.
+

@@ -1,16 +1,23 @@
 import { Section, SectionHeader } from "@/components/site/Section";
 import { OffsetCard } from "@/components/ui/OffsetCard";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SITE } from "@/content/site";
 import type { StudentDashboardData } from "@/lib/dashboard/student";
+import type { StudentAiAccess } from "@/lib/ai/access";
 import { StudentOverviewCard } from "./StudentOverviewCard";
+import { StudentAiAccessCard } from "./StudentAiAccessCard";
 import { ProgrammeTimeline } from "./ProgrammeTimeline";
 import { StudentTasks } from "./StudentTasks";
 
 // Presentational shell for the student dashboard. All data is loaded server-side
 // (see getStudentDashboardData) and passed in — this component fetches nothing.
-export function StudentDashboard({ data }: { data: StudentDashboardData }) {
+export function StudentDashboard({
+  data,
+  aiAccess,
+}: {
+  data: StudentDashboardData;
+  aiAccess: StudentAiAccess | null;
+}) {
   const firstName = data.fullName?.trim().split(/\s+/)[0] ?? null;
 
   return (
@@ -23,20 +30,8 @@ export function StudentDashboard({ data }: { data: StudentDashboardData }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <StudentOverviewCard data={data} />
 
-        {/* AI access — explicitly not available yet */}
-        <OffsetCard accent>
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-display text-2xl uppercase">AI access</h3>
-            <Badge>Coming later</Badge>
-          </div>
-          <p className="mt-3 text-sm text-brand-paper/80">
-            Your BuildAI API key, model gateway, and usage &amp; budget aren&apos;t issued yet.
-            They&apos;ll appear here in a later phase — you never handle raw provider keys.
-          </p>
-          <p className="mt-3 text-xs text-brand-paper/50">
-            Nothing to set up right now.
-          </p>
-        </OffsetCard>
+        {/* AI access — live metadata (or a clear "not issued yet" state) */}
+        <StudentAiAccessCard access={aiAccess} />
       </div>
 
       <div className="mt-6">

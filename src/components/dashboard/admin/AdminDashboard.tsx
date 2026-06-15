@@ -3,14 +3,22 @@ import { OffsetCard } from "@/components/ui/OffsetCard";
 import { Button } from "@/components/ui/Button";
 import { SITE } from "@/content/site";
 import type { AdminDashboardData } from "@/lib/dashboard/admin";
+import type { AdminAiAccessOverview } from "@/lib/ai/access";
 import { AdminOverviewCards } from "./AdminOverviewCards";
 import { LeadTables } from "./LeadTables";
 import { UserOverview } from "./UserOverview";
+import { AiAccessOverview } from "./AiAccessOverview";
 import { AdminComingSoon } from "./AdminComingSoon";
 
 // Presentational shell for the admin dashboard. All data is loaded server-side
 // (see getAdminDashboardData) and passed in — this component fetches nothing.
-export function AdminDashboard({ data }: { data: AdminDashboardData }) {
+export function AdminDashboard({
+  data,
+  aiAccess,
+}: {
+  data: AdminDashboardData;
+  aiAccess: AdminAiAccessOverview;
+}) {
   return (
     <Section>
       <SectionHeader eyebrow="Admin" title="Everything, in one place." />
@@ -25,6 +33,11 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       <div className="mt-8">
         <h2 className="eyebrow mb-4">Platform overview</h2>
         <UserOverview data={data} />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="eyebrow mb-4">AI access control plane</h2>
+        <AiAccessOverview data={aiAccess} />
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
