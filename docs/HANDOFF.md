@@ -226,7 +226,7 @@ npm run lint                     # → exit 0 (No ESLint warnings or errors)
 npm run dev                      # → manual route + form checks (below)
 
 git add .
-git commit -m "Prepare Phase 1 website for preview deploy"  # → <second local commit>
+git commit -m "Prepare Phase 1 website for preview deploy"  # → 6c56052
 ```
 
 ## Git commits created (local only)
@@ -234,7 +234,7 @@ git commit -m "Prepare Phase 1 website for preview deploy"  # → <second local 
 | Commit | Message | Contents |
 |---|---|---|
 | `2469624` | `Establish clean BuildAI website baseline` | Full working tree at audit-fix state (source, `package.json` with the `@types` fix, generated `package-lock.json`, docs, reference/). |
-| *(second)* | `Prepare Phase 1 website for preview deploy` | The four Phase-1 fixes + this handoff update. |
+| `6c56052` | `Prepare Phase 1 website for preview deploy` | The four Phase-1 fixes + this handoff update. |
 
 Branch: **`main`**. **`git push` was NOT run. No remote was added. Nothing was published to GitHub/Vercel.**
 
