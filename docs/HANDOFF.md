@@ -1331,3 +1331,149 @@ Resend accepted all three valid sends (ids logged, e.g. pilot `d85276b4…`). Ex
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). The new migration was **not** run against the live DB (manual operator step documented). Temp verification scripts deleted (not committed). DB writes were limited to clearly-tagged `verify-p10` test rows + a brief seed-then-delete for the populated render — **all removed (0 remaining)**; no users created/modified. All Git work remains local on branch `main`.
 
+---
+
+# Part 11 — Phase 2D Admin dashboard and lead management (2026-06-15)
+
+Built a **real admin dashboard at `/app/admin`**: live lead summary counts, recent lead tables for all three forms with a non-destructive **handled** toggle, a users/cohort/enrollment overview, and clearly-labelled "coming later" operations (AI keys / LiteLLM / Langfuse / CSV). **No AI infrastructure, no new external libraries, no destructive deletes.** Public pages, lead forms, auth, logout, role protection, and the student + mentor dashboards all still pass. **No `git push`, no remote, no deploy, no secrets/emails printed, `.env.local` never committed.**
+
+> ✅ **Result: Phase 2D passes end-to-end** — verified live: admin-only access, seeded leads appear + handled-status renders, empty states, full role/student/mentor/public/forms regression.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean; HEAD = 7a5a2e7
+node -v ; npm -v                             # v22.12.0 / 10.9.0
+npm install                                  # up to date (401 pkgs); non-blocking EBADENGINE only
+npm run build                                # exit 0 (baseline)
+npm run lint                                 # exit 0 (baseline)
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# env presence verified by NAME ONLY (6 vars, all present); values never printed
+# ...code changes...
+npm run build                                # exit 0, 26 routes (/app/admin still dynamic ƒ)
+npm run lint                                 # exit 0, no warnings/errors
+npm run dev                                  # served on :3000; verified via Node fetch + minted sessions
+```
+
+**Verification method (no headless browser available):** temporary Node harnesses (`_p11verify.mjs` / `_p11forms.mjs`, run then **deleted** — never committed) read `.env.local` locally without printing secrets, minted **real sessions** for the 3 test users (`generateLink` + `verifyOtp`, no passwords changed), replayed the `@supabase/ssr` cookies against the dev server (real middleware + RSC + RLS path), and seeded/cleaned tagged lead rows with the service-role client.
+
+## 2. Files changed
+
+| File | New? | Change |
+|---|---|---|
+| `src/lib/dashboard/admin.ts` | ✅ new | Server loader `getAdminDashboardData()` — bounded, RLS-scoped reads (head counts + recent-12) of lead tables, `profiles`, `cohorts`, `enrollments` via the admin cookie client; error-wrapped; empty defaults on any miss. |
+| `src/lib/dashboard/admin-actions.ts` | ✅ new | `"use server"` `setLeadHandled(formData)` — toggles a lead's `handled` flag; admin-gated (`requireRole(["admin"])`), table allowlist + UUID validation, service-role write, `revalidatePath`. Non-destructive (no delete). |
+| `src/components/dashboard/admin/AdminOverviewCards.tsx` | ✅ new | Summary stat cards (total leads, per-form counts, users, cohorts). |
+| `src/components/dashboard/admin/LeadTables.tsx` | ✅ new | Recent pilot / student / mentor lead tables (name, email, org, role, received date) with per-row handled toggle (progressive-enhancement form) + per-table empty states. |
+| `src/components/dashboard/admin/UserOverview.tsx` | ✅ new | Users-by-role counts + cohorts/enrollment counts and recent cohorts; empty states. |
+| `src/components/dashboard/admin/AdminComingSoon.tsx` | ✅ new | "Coming later" ops: AI key issuance, LiteLLM usage/cost, Langfuse traces, CSV export. |
+| `src/components/dashboard/admin/AdminDashboard.tsx` | ✅ new | Presentational composition (fetches nothing): overview cards + lead management + platform overview + coming-soon + support CTA. |
+| `src/app/app/admin/page.tsx` | edited | `requireRole(["admin"])` (unchanged gate) → loads data server-side → renders `<AdminDashboard />`. |
+| `docs/HANDOFF.md` | edited | This Part 11. |
+
+**Not changed:** auth helpers, middleware, `auth-actions.ts`, login, student + mentor dashboards (loaders/components/pages), `app/layout.tsx` shell, form routes/validation/email, migrations `0001`/`0002`/`0003`, `.gitignore`, `.env.local`. No new dependencies.
+
+## 3. Migration added or not added
+
+🟢 **No new migration — none needed.** Audited all three migrations. Existing RLS from `0001` already grants **admin** everything this dashboard reads:
+
+| Data | Table | Admin read policy (from `0001`) |
+|---|---|---|
+| Leads | `pilot_inquiries` / `student_waitlist` / `mentor_applications` | `... admin read` (SELECT `using is_admin()`) |
+| Users | `profiles` | `profiles self read` (`... or is_admin()`) |
+| Cohorts / enrollment | `cohorts` / `enrollments` | authenticated read / `... or is_admin()` |
+
+For the **handled toggle**, the lead tables intentionally have **no admin UPDATE policy**. Rather than add one (which would require a manual migration run before the toggle works), the write goes through an **admin-gated server action using the server-only service-role client** — the existing pattern the form routes already use. This is safe (the action re-checks `requireRole(["admin"])`, allowlists the table, validates the id, and the service-role key never reaches the browser) and needs **no new policy**. No destructive SQL; no `0004` migration.
+
+## 4. Migration run / manual action
+
+N/A — **no migration added**, so **no Supabase SQL Editor action is required** for Phase 2D. The dashboard and the handled toggle work against the already-applied `0001`–`0003` schema. (`0003` from Part 10 is still optionally pending for mentor student-names; unrelated to this phase.)
+
+## 5. Admin dashboard features implemented
+
+- **Admin identity:** email + role (shell + support card).
+- **Lead summary counts:** total + per-form (pilot / student / mentor), plus users and cohorts.
+- **Recent lead tables** (most-recent 12 each) for all three forms.
+- **Users & roles overview:** totals by role.
+- **Cohorts & enrollment overview:** counts + recent cohorts.
+- **"Coming later" operations:** AI key issuance, LiteLLM usage/cost, Langfuse traces, CSV export — all clearly labelled.
+- **Support CTA** → `mailto:contact@buildai.global`.
+
+## 6. Lead management features implemented
+
+- **View** pilot inquiries, student waitlist, mentor applications with practical fields: name/contact, email, organization (college/company), role, **received date**, and **status** (Open/Handled). Internal ids/secrets are not surfaced (the id is only used inside the toggle form).
+- **Status update (handled):** a per-row toggle ("Mark handled" / "Reopen") via the admin-gated `setLeadHandled` server action (non-destructive; no delete). Verified live that the status **renders** (Open → Reopen after a flip) and the form is wired with the correct table/id/handled fields.
+- **Access control:** lead reads are gated by `is_admin()` RLS *and* the route's `requireRole(["admin"])`; students/mentors/public cannot reach the data (verified).
+- **No destructive delete** implemented (per rules).
+- **CSV export: deferred** — surfaced as a clearly-labelled "coming later" item rather than shipped this phase (keeps the change small/production-safe).
+
+## 7. Data sources used
+
+**Live, RLS-scoped Supabase reads** via the admin cookie client: `pilot_inquiries`, `student_waitlist`, `mentor_applications`, `profiles`, `cohorts`, `enrollments`. The handled write uses the server-only service-role client inside the admin-gated action. No fabricated data; all placeholders clearly labelled.
+
+## 8. Empty states implemented
+
+- **No leads:** each lead table shows "No <type> yet. New submissions from the public forms will appear here."
+- **No users / cohorts:** users and cohorts/enrollment cards show empty-state messages.
+- **Error-safe:** the loader is fully wrapped (bounded `Promise.all` of head counts + recent-N); missing/empty data → zero counts + empty states, never an error/500 (verified: dev log clean).
+
+## 9. Admin role behavior
+
+✅ Verified live with a real admin session: `/app/admin` → **200** with the admin's **email + role badge** and all content markers (`Everything, in one place.`, `Lead management`, the three lead tables, `Users & roles`, `Cohorts & enrollment`, `Operations — coming later`, `AI key issuance`, `LiteLLM usage`, `Langfuse traces`, `CSV export`, `Need help`). Admin also reaches `/app` → **200** and `/app/mentor` → **200**. Logged-out `/app/admin` → **307 → /login**. **Lead path:** seeding tagged pilot/student/mentor leads made all three appear on the dashboard; flipping a lead's `handled` via the same write surfaced the "Reopen" control; seeded leads then deleted (0 remaining).
+
+## 10. Student / mentor regression behavior
+
+✅ Student: `/app/admin` → **307 → /app**. Mentor: `/app/admin` → **307 → /app/mentor**. Neither can read admin-only lead data (route + RLS). Student/mentor pages unchanged.
+
+## 11. Student dashboard regression result
+
+✅ Student `/app` still renders the Phase-2B dashboard (200, "Your profile"); admin `/app` still 200. No student-dashboard code touched.
+
+## 12. Mentor dashboard regression result
+
+✅ Mentor `/app/mentor` still renders the Phase-2C dashboard (200); admin `/app/mentor` still 200. No mentor-dashboard code touched.
+
+## 13. Public route regression result
+
+✅ All sampled public routes → **200**: `/`, `/for-colleges`, `/for-students`, `/for-mentors`, `/contact`, `/privacy`, `/terms`.
+
+## 14. Phase 1 form regression result
+
+✅ Unchanged and working against live Supabase + Resend:
+
+| Case | pilot | student | mentor |
+|---|---|---|---|
+| **Valid** → `200 {ok:true}` + 1 row + email | ✅ | ✅ | ✅ |
+| **Honeypot** → 200, no row, no email | ✅ | — | — |
+| **Invalid** → 400, no row, no email | ✅ | — | — |
+
+Resend accepted all three valid sends (ids logged, e.g. pilot `dec76c0a…`). Exactly 1 tagged row per table.
+
+## 15. Test data cleanup result
+
+✅ All test rows deleted, **0 remaining**: the admin-path leads (`verify-p11`) and the forms-regression leads (`verify-p11form`) were each read-back-confirmed then deleted. The brief `handled=true` flip was on a seeded row that was subsequently deleted. No test users created/modified; no real lead rows altered.
+
+## 16. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes. `/app/admin` dynamic (`ƒ`); marketing routes static (`○`); Middleware (`ƒ`). No type errors. (Same non-blocking Edge-Runtime advisory on the Supabase middleware import as Parts 7–10.)
+
+## 17. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 18. Remaining issues
+
+- 🟡 **CSV export deferred** — shown as "coming later"; implement as an admin-only server route when wanted.
+- 🟡 **Human visual pass** of `/app/admin` in a real browser (layout/responsive/console + click the handled toggle) — server render, lead visibility, and handled-status rendering verified by HTTP; the toggle's mutation is admin-gated (`requireRole`) + allowlisted + service-role and wired via a progressive-enhancement form.
+- 🟡 **`0003_mentor_dashboard.sql` still optionally pending** (from Part 10) for mentor-facing student names — unrelated to Phase 2D.
+- 🟡 **Edge-Runtime advisory** on the Supabase middleware import (non-blocking).
+- ⚪ **Deferred by design (out of this phase):** AI key issuance/LiteLLM/Langfuse; payments; Turnstile + rate limiting; Google sign-in; production domain.
+
+## 19. Is Phase 2D complete?
+
+✅ **Yes.** `/app/admin` is a real, admin-only dashboard with live lead summary counts, recent lead tables for all three forms, a non-destructive handled-status toggle, a users/cohort/enrollment overview, clean empty states, and clearly-labelled "coming later" operations. No AI infrastructure was introduced. All three role dashboards (student/mentor/admin) are now implemented and verified — Phase 2 platform foundation is in place.
+
+## 20. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No new migration and no SQL run against the live DB. The service-role key is used only server-side (loader reads via the admin RLS cookie client; the handled write via the server-only service-role client) and never reaches the browser. Temp verification scripts deleted (not committed). DB writes were limited to clearly-tagged `verify-p11` / `verify-p11form` test rows (+ one handled flip on a seeded row) — **all removed (0 remaining)**; no users created/modified. All Git work remains local on branch `main`.
+
