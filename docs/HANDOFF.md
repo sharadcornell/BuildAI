@@ -544,3 +544,120 @@ The **valid → 500** state from Part 3 (missing table) is **gone** — valid su
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed or printed; no secret values appear in this doc, terminal output, or any commit. The only Supabase writes were 4 clearly-marked test rows, all deleted afterward. All Git work remains local on branch `main`.
 
+---
+
+# Part 5 — Resend lead notification verification (2026-06-15)
+
+`RESEND_API_KEY` + `LEAD_NOTIFICATION_TO` are now set, so this part verifies that successful Phase-1 submissions **both create a Supabase row and dispatch a Resend email**, and that edge cases still send nothing. **Scope: email verification only — no auth, dashboards, LiteLLM, Langfuse, payments, role routing, or Turnstile touched.** One **minimal** code change was made to the email helper (surface the Resend send result — see §4). No `git push`, no remote, no deploy, no secrets printed.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean
+node -v ; npm -v                             # v22.12.0 / 10.9.0
+npm install                                  # up to date (401 pkgs)
+npm run build                                # exit 0 (baseline, before change)
+npm run lint                                 # exit 0 (baseline)
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# env presence verified by NAME ONLY (grep "^VAR=" + non-empty); values never printed
+npm run dev                                  # 4 valid + 4 edge submissions via curl → localhost:3000
+#   dev log read for [email] send results; PostgREST used (service-role creds in shell vars,
+#   never echoed) to confirm row counts + read back rows, then DELETE the 4 test rows
+npm run build ; npm run lint                 # exit 0 (after the email.ts change)
+```
+
+## 2. Env vars checked (by name only — no values printed)
+
+| Variable | Present? |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ |
+| `NEXT_PUBLIC_SITE_URL` | ✅ |
+| `RESEND_API_KEY` | ✅ **(newly set)** |
+| `LEAD_NOTIFICATION_TO` | ✅ **(newly set)** |
+
+## 3. `.env.local` ignored by Git
+
+✅ `git check-ignore -v .env.local` → `.gitignore:11:.env*.local`. Not tracked, not staged, contents never read/printed/committed.
+
+## 4. Files changed
+
+| File | Change | Why |
+|---|---|---|
+| `src/lib/email.ts` | Capture the `{ data, error }` returned by `resend.emails.send()`: log `Resend accepted … (id: …)` on success, `Resend rejected …` on an API error, and wrap the call in `try/catch` so a thrown error can't 500 an already-saved lead. | The Resend SDK **returns** errors instead of throwing; the previous `await send()` discarded the result, so a silently-dropped email looked identical to a sent one — making delivery impossible to verify and hiding real failures. Minimal fix: surface the outcome. No change to recipients, content, `from`, or the existing "skip if unconfigured" no-op. |
+
+**Not changed:** the 3 API routes (already call `sendLeadEmail` on the success path), `validation.ts`, Supabase helpers, migration, any page/copy/component, `.env.local`, `.gitignore`.
+
+## 5. Resend result
+
+✅ **Working — server-side only, no secret exposure.**
+
+- `Resend` is imported and instantiated **only** in `src/lib/email.ts` (a server module). `sendLeadEmail` is imported only by the three API route handlers (server-side). **No `"use client"` file imports the helper**, so `RESEND_API_KEY` / `LEAD_NOTIFICATION_TO` never reach the browser bundle.
+- All four success paths call the helper: `/api/pilot-inquiry` (used by **`/for-colleges`** and **`/contact`**), `/api/student-waitlist` (`/for-students`), `/api/mentor-application` (`/for-mentors`).
+- Each valid submission produced a **Resend "accepted" response with a real message id** (captured server-side):
+
+  | Submission | Subject | Resend message id |
+  |---|---|---|
+  | pilot (for-colleges) | `New pilot inquiry — VERIFY-P5 Colleges` | `a813329b-924a-4a8a-ad47-3d73a8a12e1c` |
+  | pilot (contact) | `New pilot inquiry — VERIFY-P5 Contact` | `1bf4cac7-f9d0-44ca-a93a-a4b8eab18a0e` |
+  | student waitlist | `New student waitlist signup` | `99cffa39-9ae5-4fa1-a15c-d71d31fe58c2` |
+  | mentor application | `New mentor application — VERIFY-P5 Mentor` | `f071fd5b-08ba-423f-93ab-d07d2d43fdcb` |
+
+## 6. Supabase row creation result
+
+✅ Verified by read-back; tables started at 0:
+
+| Table | Rows after valid submits | Read-back |
+|---|---|---|
+| `pilot_inquiries` | **2** | `VERIFY-P5 Colleges` (TPO) + `VERIFY-P5 Contact` (Other) — `/contact` reuses pilot inquiry ✓ |
+| `student_waitlist` | **1** | `VERIFY-P5 Student` |
+| `mentor_applications` | **1** | `VERIFY-P5 Mentor` |
+
+Honeypot/invalid/malformed wrote nothing (exact totals 2/1/1; honeypot marker query returned `[]`).
+
+## 7. Email delivery result
+
+- ✅ **Dispatch confirmed:** Resend accepted all four sends and returned message ids (no API error, no throw). Submissions returned `200 {ok:true}`.
+- ⚠️ **Final inbox arrival not confirmable from here** — this environment has no access to the `LEAD_NOTIFICATION_TO` mailbox. "Accepted by Resend" means the API queued it; confirm actual receipt in the **Resend dashboard → Emails** (the four ids above) and in the inbox.
+- ℹ️ **Deliverability note:** `from` is still `onboarding@resend.dev` (Resend's shared sender). Resend accepted the sends, but for production deliverability and to send to arbitrary recipients, verify the **buildai.global** domain in Resend and switch `from` to `contact@buildai.global` (the code comment already flags this). Until then, keep `LEAD_NOTIFICATION_TO` as the Resend account's own verified address.
+
+## 8. API behavior matrix (live, post-Resend-config)
+
+| Case | HTTP | Row created? | Email sent? |
+|---|---|---|---|
+| **Valid payload** (pilot ×2, student, mentor) | 200 `{ok:true}` | ✅ yes | ✅ yes (Resend id logged) |
+| **Filled honeypot** (valid fields + `hp`) | 200 `{ok:true}` | ❌ no | ❌ no |
+| **Invalid payload** | 400 `Invalid submission.` | ❌ no | ❌ no |
+| **Malformed JSON** | 400 `Invalid submission.` | ❌ no | ❌ no |
+| **Wrong method (GET)** | 405 | ❌ no | ❌ no |
+
+Confirmed the `[email]` log line count was **unchanged (delta 0)** across all four edge cases — no notification is sent unless a row is actually written. Client errors remain generic (`Invalid submission.` / `Something went wrong.`); no Supabase or Resend internals leak to the user.
+
+## 9. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes (3 API routes dynamic `ƒ`). No type errors. Re-verified after the `email.ts` change.
+
+## 10. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 11. Test data cleanup result
+
+✅ All **4** `VERIFY-P5` test rows deleted afterward (`DELETE … email ilike %verify-p5%`); `pilot_inquiries` / `student_waitlist` / `mentor_applications` all back to **0 rows**. (The four test emails were dispatched to `LEAD_NOTIFICATION_TO` — they're clearly subject-tagged `VERIFY-P5` and can be ignored/deleted in the inbox.)
+
+## 12. Remaining issues
+
+- 🟡 **Verify domain in Resend** and move `from` to `contact@buildai.global` before launch (current `onboarding@resend.dev` is fine for testing but limits deliverability/recipients).
+- 🟡 **Confirm actual inbox receipt** of the four test emails in the Resend dashboard / `LEAD_NOTIFICATION_TO` inbox (couldn't be checked from here).
+- 🟡 **Final real-browser pass** still recommended to close the "no console errors" DoD item (brief §12).
+- ⚪ **Deferred (out of scope, unchanged):** Cloudflare Turnstile + rate limiting (brief §4); DPDP `/privacy` + `/terms` before Phase-2 logging (brief §13); 2 moderate `npm audit` advisories; local root-owned `~/.npm` cache (machine-only; does not affect Vercel).
+
+## 13. Ready for Vercel preview deployment?
+
+**Yes.** Lead capture now **persists rows and sends notifications** end-to-end; edge cases are safe; clean `build` + `lint`. Deploy was intentionally **not** performed. To deploy: push to GitHub → import to Vercel → set the same Supabase **and** Resend env vars (Production + Preview); finish Resend domain verification for best deliverability.
+
+## 14. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed or printed; no secret values (Supabase/Resend keys, recipient address) appear in this doc, terminal output, or any commit — only non-sensitive Resend message ids. Supabase writes were 4 marked test rows, all deleted. All Git work remains local on branch `main`.
+
