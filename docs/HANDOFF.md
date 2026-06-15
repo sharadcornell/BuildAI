@@ -1185,3 +1185,149 @@ Resend accepted all three valid sends (ids logged, e.g. pilot `7b603d1a…`). Ex
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No new migration and no SQL run against the live DB. Temp verification scripts deleted (not committed). DB writes were limited to clearly-tagged test rows + a brief seed-then-delete for the populated render — **all removed (0 remaining)**; no users created/modified. All Git work remains local on branch `main`.
 
+---
+
+# Part 10 — Phase 2C Mentor dashboard (2026-06-15)
+
+Built a **real mentor dashboard at `/app/mentor`** on top of the verified Phase 2A auth + 2B patterns. Shows a mentor's assigned students, cohort context, and live progress (RLS-scoped), with review-queue/check-in/cohort-health/AI-trace placeholders and clean empty states. **No AI infrastructure, no admin dashboard, no new external libraries.** Public pages, lead forms, auth, logout, role protection, and the student dashboard all still pass. **No `git push`, no remote, no deploy, no secrets/emails printed, `.env.local` never committed.**
+
+> ⚠️ **One manual operator step (optional but recommended):** run `supabase/migrations/0003_mentor_dashboard.sql` in the Supabase SQL Editor so mentors can see their assigned students' **names**. Everything else (assigned-student count, cohort, progress) already works under existing RLS. Details in [§3](#3-migration-added-or-not-added-2)/[§4](#4-migration-run--manual-action-2).
+>
+> ✅ **Result: Phase 2C passes end-to-end** — verified live for empty-state and the populated (seeded-then-deleted) data path, plus full role/student/admin/public/forms regression.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean; HEAD = 4d3c399
+node -v ; npm -v                             # v22.12.0 / 10.9.0
+npm install                                  # up to date (401 pkgs); non-blocking EBADENGINE only
+npm run build                                # exit 0 (baseline)
+npm run lint                                 # exit 0 (baseline)
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# env presence verified by NAME ONLY (6 vars, all present); values never printed
+# ...code changes...
+npm run build                                # exit 0, 26 routes (/app/mentor still dynamic ƒ)
+npm run lint                                 # exit 0, no warnings/errors
+npm run dev                                  # served on :3000; verified via Node fetch + minted sessions
+```
+
+**Verification method (no headless browser available):** temporary Node harnesses (`_p10verify.mjs` / `_p10forms.mjs`, run then **deleted** — never committed) read `.env.local` locally without printing secrets, minted **real sessions** for the 3 test users (`generateLink` + `verifyOtp`, no passwords changed), replayed the `@supabase/ssr` cookies against the dev server (real middleware + RSC + RLS path), and seeded/cleaned the populated-state rows with the service-role client.
+
+## 2. Files changed
+
+| File | New? | Change |
+|---|---|---|
+| `supabase/migrations/0003_mentor_dashboard.sql` | ✅ new | **Additive RLS only — no new tables.** Adds a scoped `profiles` SELECT policy so a mentor can read the profile rows (names) of students assigned to them, via `mentors_student(id)`. See §3. |
+| `src/lib/dashboard/mentor.ts` | ✅ new | Server loader `getMentorDashboardData()` — RLS-scoped reads of `profiles` → `mentor_assignments` → `enrollments`(+`cohorts`) → `progress`; per-student progress summary; error-wrapped; identity + empty defaults on any miss. |
+| `src/components/dashboard/mentor/MentorOverviewCard.tsx` | ✅ new | Mentor identity, assigned-student count, cohort(s); role-aware empty state. |
+| `src/components/dashboard/mentor/AssignedStudents.tsx` | ✅ new | Per-student list (name/cohort/current week/last status); empty state; note when names await 0003. |
+| `src/components/dashboard/mentor/MentorReviewQueue.tsx` | ✅ new | Review-queue + upcoming check-ins + cohort-health placeholders, clearly labelled. |
+| `src/components/dashboard/mentor/MentorDashboard.tsx` | ✅ new | Presentational composition (fetches nothing): overview + AI-trace "Coming later" card + assigned students + review queue + support CTA. |
+| `src/app/app/mentor/page.tsx` | edited | `requireRole(["mentor","admin"])` (unchanged gate) → loads data server-side → renders `<MentorDashboard />`. |
+| `docs/HANDOFF.md` | edited | This Part 10. |
+
+**Not changed:** auth helpers, middleware, `auth-actions.ts`, login, the student dashboard + its loader/components, the admin page, `app/layout.tsx` shell, form routes/validation/email, migrations `0001`/`0002`, `.gitignore`, `.env.local`. No new dependencies.
+
+## 3. Migration added or not added
+
+🟡 **One additive migration added: `0003_mentor_dashboard.sql` — RLS policy only, NO new tables.** Audited all three migrations. The mentor↔student map and supporting tables **already exist** in `0001`, with mentor-appropriate RLS:
+
+| Need | Existing table/policy (from `0001`) | Mentor read access |
+|---|---|---|
+| Assigned students | `mentor_assignments` (`mentor_id`→profiles.id, `student_id`→profiles.id) | own rows ("assignments read") |
+| Student progress | `progress` | assigned students via `mentors_student()` |
+| Student enrollment → cohort | `enrollments` + `cohorts` | assigned via `mentors_student()`; cohorts authenticated-read |
+| Pods | `pods` | authenticated-read |
+
+The suggested `mentor_assignments(mentor_id, cohort_id)` was **not** created — the existing `mentor_assignments(mentor_id, student_id)` is the equivalent (and richer) map and was reused. The **only** gap was that `0001`'s `profiles self read` policy (`user_id = auth.uid() OR is_admin()`) prevented a mentor from reading their assigned students' **names**. `0003` adds one scoped, additive, idempotent SELECT policy — `using (mentors_student(id))` — granting exactly that and nothing more (students get no new access; `mentors_student` is SECURITY DEFINER so no policy recursion). No destructive SQL.
+
+## 4. Migration run / manual action
+
+🔴 **Not run from here** (CLI not linked; per the rules I don't run SQL against the live DB). It is **optional for the dashboard to function** and **required only for student names** to appear.
+
+**To apply (recommended):**
+1. Supabase Dashboard → **SQL Editor → New query**.
+2. Paste all of `supabase/migrations/0003_mentor_dashboard.sql` → **Run** (additive/idempotent; safe on the live project).
+3. Verify the policy set on `profiles`:
+   ```sql
+   select polname from pg_policies where schemaname='public' and tablename='profiles' order by polname;
+   -- expect: profiles admin write | profiles mentor read assigned | profiles self read | profiles self update
+   ```
+
+**No tables change** — only the policy is added. Until it's run, the mentor dashboard shows assigned-student **count, cohort, and progress** (all live) but renders names as "Assigned student N" with an on-card note.
+
+## 5. Mentor dashboard features implemented
+
+- **Mentor identity:** email, role, name (shell + overview card).
+- **Assigned cohort(s)** — derived from assigned students' enrollments.
+- **Assigned students** — per-student card: name (post-0003), cohort, current week, last status, deliverable count.
+- **Student progress summary** — current in-progress week + status per student (live via RLS).
+- **Review queue placeholder** — labelled "Coming soon".
+- **Upcoming mentor check-ins** — placeholder (pod-aware copy).
+- **Cohort health placeholder** — labelled "Coming soon".
+- **AI trace/review placeholder** — labelled **"Coming later"** (audited read-only traces in a later phase).
+- **Support/help CTA** → `mailto:contact@buildai.global`.
+
+## 6. Data sources used
+
+- **Live, RLS-scoped Supabase reads** (cookie-bound SSR client, mentor's own scope only): `profiles`, `mentor_assignments`, `enrollments`, `cohorts`, `progress`.
+- No static per-student data is fabricated; placeholders are clearly labelled. (No new static content was needed beyond the existing design system.)
+
+## 7. Empty states implemented
+
+- **No assignments:** overview shows "No students are assigned to you yet…" (admin variant: "viewing the mentor dashboard as an admin…"); Assigned Students shows an empty card.
+- **Names not yet readable (pre-0003):** students still listed with cohort/progress; a small note explains names unlock after migration 0003.
+- **Error-safe:** all loader queries wrapped; missing/empty data → identity + empty states, never an error/500 (verified: dev log clean).
+
+## 8. Mentor role behavior
+
+✅ Verified live with a real mentor session: `/app/mentor` → **200** rendering the dashboard with the mentor's **email + role badge** and all content markers (`Mentor profile`, `Assigned students`, `Review queue`, `Upcoming check-ins`, `Cohort health`, `AI trace review`, `Coming later`, `Need help`). `/app` → **307 → /app/mentor**; `/app/admin` → **307 → /app/mentor**. Logged-out `/app/mentor` → **307 → /login**. **Populated path** (seeded mentor→student assignment + cohort + week-4 `in_progress` progress): dashboard showed **1 assigned student**, the **cohort name**, **Week 4**, and **In progress** — then all seeded rows were deleted (student names correctly withheld pre-0003).
+
+## 9. Student / admin regression behavior
+
+✅ Student: `/app/mentor` → **307 → /app** (cannot access mentor dashboard). Admin: `/app` → **200**, `/app/mentor` → **200** (renders mentor dashboard with admin empty-state note), `/app/admin` → **200**. Student/admin pages unmodified.
+
+## 10. Student dashboard regression result
+
+✅ Student `/app` still renders the Phase-2B student dashboard (200, "Your profile" present); admin `/app` still 200. No changes to student dashboard code.
+
+## 11. Public route regression result
+
+✅ All sampled public routes → **200**: `/`, `/for-colleges`, `/for-students`, `/for-mentors`, `/contact`, `/privacy`, `/terms`.
+
+## 12. Phase 1 form regression result
+
+✅ Unchanged and working against live Supabase + Resend:
+
+| Case | pilot | student | mentor |
+|---|---|---|---|
+| **Valid** → `200 {ok:true}` + 1 row + email | ✅ | ✅ | ✅ |
+| **Honeypot** → 200, no row, no email | ✅ | — | — |
+| **Invalid** → 400, no row, no email | ✅ | — | — |
+
+Resend accepted all three valid sends (ids logged, e.g. pilot `d85276b4…`). Exactly 1 tagged row per table; all **3 `verify-p10` rows deleted, 0 remaining**.
+
+## 13. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes. `/app/mentor` dynamic (`ƒ`); marketing routes static (`○`); Middleware (`ƒ`). No type errors. (Same non-blocking Edge-Runtime advisory on the Supabase middleware import as Parts 7–9.)
+
+## 14. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 15. Remaining issues
+
+- 🟡 **Run `0003_mentor_dashboard.sql`** (§4) so mentor-facing student **names** appear; everything else already works live.
+- 🟡 **Human visual pass** of `/app/mentor` in a real browser (layout/responsive/console) — server render + content fully verified by HTTP.
+- 🟡 **No live mentor assignments** seeded in the project for the test mentor, so day-to-day it shows empty states (correct + intended). Populated render verified via seed-then-delete.
+- 🟡 **Edge-Runtime advisory** on the Supabase middleware import (non-blocking).
+- ⚪ **Deferred by design (out of this phase):** admin dashboard; AI key issuance/LiteLLM/Langfuse (incl. real trace review); payments; Turnstile + rate limiting; Google sign-in; production domain.
+
+## 16. Is Phase 2C complete?
+
+✅ **Yes.** `/app/mentor` is a real, protected, role-scoped mentor dashboard showing authenticated identity, assigned students + cohort + live progress, with clearly-labelled review-queue/check-in/cohort-health/AI-trace placeholders, error-safe empty states, and a support CTA. No AI infrastructure was introduced. The admin dashboard remains the next phase. The optional `0003` migration unlocks student names but isn't required for the dashboard to function.
+
+## 17. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). The new migration was **not** run against the live DB (manual operator step documented). Temp verification scripts deleted (not committed). DB writes were limited to clearly-tagged `verify-p10` test rows + a brief seed-then-delete for the populated render — **all removed (0 remaining)**; no users created/modified. All Git work remains local on branch `main`.
+
