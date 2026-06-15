@@ -1697,3 +1697,108 @@ Until it's run, the app stays fully functional: student card shows **"Not issued
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed/read/printed; no secret values appear in this doc, terminal output, or any commit. No raw keys generated or stored. No SQL run against the live DB (`0004` left to the operator). Service-role key stayed server-side and confirmed absent from the client bundle. The one form-regression test row was deleted (0 residual). All Git work remains local on branch `main`.
 
+
+---
+
+# Part 14 — Phase 3A API-key budget model correction (2026-06-15)
+
+Patched the Phase-3A scaffolding (from commit `ac2aa9e`) to the clarified product model: every BuildAI-issued API key now carries a **dollar usage budget (default $5)**, configurable allowed models, dollar-spend usage tracking, an **exhausted** state, and an admin usage summary. Because `0004_ai_access.sql` was **not yet applied** (live probe → 404), the migration was edited in place rather than adding `0005`. **No live LiteLLM issuance, no real LLM calls, no chat UI, no live SQL.** No `git push`, no remote, no deploy, no secrets exposed.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean
+node -v                                       # v22.12.0
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+npm install                                   # up to date (no new deps)
+npm run build                                 # exit 0 (baseline + after changes)
+npm run lint                                  # exit 0 "No ESLint warnings or errors"
+# env presence by NAME ONLY: Supabase/Resend present; LITELLM_*/LANGFUSE_* all ABSENT
+# service-role probe of student_ai_access → HTTP 404 (still not applied)
+npm run dev                                    # routes + redirects + form round-trip via curl
+# secret-leak greps over src/ and .next/static
+```
+
+## 2. Files changed
+
+| File | Change |
+|---|---|
+| `supabase/migrations/0004_ai_access.sql` | **Edited in place** (not applied yet). Added `label`, `budget_period`, `last_synced_spend_usd`, `last_synced_at`; made `monthly_budget_usd numeric NOT NULL DEFAULT 5`; added `exhausted` to the status CHECK. RLS + trigger unchanged. |
+| `src/lib/ai/access.ts` | New `DEFAULT_BUDGET_USD = 5`, `BUDGET_EXHAUSTED_MESSAGE`. `StudentAiAccess`/admin types extended with budget/used/remaining/period/lastSynced/`isExhausted`. Loaders compute `used_usd`, `remaining_usd`, exhausted, and an aggregate admin usage summary. |
+| `src/lib/ai/access-actions.ts` | `createAiAccessRecord` now defaults budget to `$5`, status `pending`, period `calendar_month`, label `Default API key`. Added `updateAiAccessBudget`, `updateAiAccessModels`. `setAiAccessStatus` accepts `exhausted`. All non-destructive (no deletes). |
+| `src/components/dashboard/student/StudentAiAccessCard.tsx` | Shows status, monthly budget, used, remaining, budget period, models, masked hint, not-issued state, and the exact exhausted banner. |
+| `src/components/dashboard/admin/AiAccessOverview.tsx` | Status counts (incl. exhausted), aggregate dollar usage summary, per-key budget/used/remaining, inline budget + allowed-models editors, activate/suspend/revoke/exhaust, "live issuance & spend sync coming in Phase 3B" note. |
+| `docs/HANDOFF.md` | This Part 14. |
+
+**Not changed:** `src/lib/ai/litellm.ts` + `src/lib/langfuse.ts` (already correct under the new model — `isLiteLLMConfigured()`, server-only `createVirtualKeyForStudent()`, `isLangfuseConfigured()` all intact), the Phase-2 `src/lib/litellm.ts` stub, the older `student_api_keys` table (0001), validation, supabase helpers, mentor dashboard, public pages/copy. No new npm dependency. No RPM/TPM/daily-budget code existed → nothing to remove.
+
+## 3. Migration changed
+
+✅ `supabase/migrations/0004_ai_access.sql` was patched directly (it had not been applied).
+
+## 4. Migration still not applied
+
+🟠 **Confirmed not applied.** Service-role probe of `student_ai_access` → **HTTP 404**. It must be run manually later (Supabase Dashboard → SQL Editor → paste all of `0004_ai_access.sql` → Run). The app stays functional until then (student card → "Not issued", admin → 0 records + config pills; no 500s).
+
+## 5. New default budget
+
+✅ **`$5`** — `monthly_budget_usd NOT NULL DEFAULT 5` in SQL, `DEFAULT_BUDGET_USD = 5` in code, and the create action/form default to it.
+
+## 6. Budget configurable per API-key record
+
+✅ Yes. `createAiAccessRecord` accepts a budget; `updateAiAccessBudget` edits it per record (admin inline form).
+
+## 7. Allowed models configurable per API-key record
+
+✅ Yes. `allowed_models text[]` per record; `updateAiAccessModels` edits it (comma/newline list; blank = all models).
+
+## 8. Usage is dollar-spend based
+
+✅ Yes. `last_synced_spend_usd` drives `used_usd`; `remaining_usd = monthly_budget_usd − used`. (Live spend sync from the proxy lands in Phase 3B; for now it reads the stored value, default 0.)
+
+## 9. RPM/TPM limits deferred
+
+✅ Confirmed. None were present and none were added — the only enforcement model is dollar spend per key.
+
+## 10. Student exhausted-budget message
+
+✅ When `remaining_usd <= 0` or `status = 'exhausted'`, the student card shows the exact copy: **"Budget exhausted. Please contact your BuildAI admin."**
+
+## 11. Admin usage summary behavior
+
+✅ Per-status counts (pending/active/suspended/revoked/exhausted), an aggregate **Total budget / Total used / Total remaining** ($), and a per-key table with budget/used/remaining, allowed models, last-synced, status, plus inline budget + model editors and status actions.
+
+## 12. LiteLLM/Langfuse not-configured behavior
+
+✅ Both env groups absent → admin shows **"Not configured"** pills and a **"Live issuance and spend sync arrive in Phase 3B"** note; create records planned-only (no key minted). Student card shows "Not issued". No 500s.
+
+## 13. Regression test results
+
+✅ Logged-out `/app`, `/app/admin`, `/app/mentor` → **307 → /login**; `/`, `/for-students`, `/contact`, `/login` → **200**. Student waitlist: **valid → 200** (row created, verified, deleted), **honeypot → 200 no row**, **invalid → 400**. Dev log clean (only intended Resend/DB no-op logs). Pilot/mentor/contact share the same unchanged code path; lead handled/reopen action untouched. (Authenticated dashboard visual pass needs real login creds, unavailable here — but only additive AI props changed.)
+
+## 14. Security check results
+
+✅ `.env.local` ignored, never staged/printed. ✅ `LITELLM_MASTER_KEY` only in `src/lib/{litellm,ai/litellm}.ts`; `LANGFUSE_SECRET_KEY` only in `src/lib/langfuse.ts`; `SUPABASE_SERVICE_ROLE_KEY` only in `src/lib/supabase/server.ts`. ✅ No `"use client"` file imports any AI/server helper. ✅ `.next/static` scanned — **no** server-secret or provider-key names. ✅ No raw API keys stored (schema has none), logged, or in docs; helper masks + logs status only. ✅ One test row created during regression, deleted (0 residual).
+
+## 15. Build result
+
+✅ `npm run build` → **exit 0**.
+
+## 16. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 17. Remaining issues
+
+- 🟠 **Run `0004_ai_access.sql`** manually to activate the table (app degrades gracefully until then).
+- ⚪ **Phase 3B (deferred):** live LiteLLM virtual-key issuance (one-time raw-key reveal) + dollar-spend sync to `last_synced_spend_usd` + auto-flip to `exhausted`. Schema/actions/UI are ready for it.
+- ⚪ **Authenticated visual pass** of the new cards still recommended (no login creds here).
+- ⚪ **Deferred (unchanged):** Google sign-in; Turnstile + rate limiting; payments; DPDP `/privacy`+`/terms` before query logging.
+
+## 18. Is Phase 3A now aligned with the clarified product requirement?
+
+✅ **Yes.** API-key records carry a configurable dollar budget (default $5), configurable allowed models, dollar-spend usage (used/remaining), the exhausted status + exact student message, and an admin usage summary. Live issuance + spend sync remain a clean Phase-3B step on top of this schema.
+
+## 19. Git / deploy / SQL safety confirmation
+
+✅ **No `git push`. No remote added. No deploy. No live SQL.** ✅ `.env.local` never committed/read/printed; no secret values appear in this doc, terminal output, or any commit. No raw keys generated, stored, or printed. `0004` was edited but **not applied** (still 404). Service-role key stayed server-side and confirmed absent from the client bundle. The one form-regression test row was deleted (0 residual). All Git work remains local on branch `main`.

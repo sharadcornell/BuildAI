@@ -1,16 +1,19 @@
--- BuildAI — Phase 3A: AI access control-plane metadata
+-- BuildAI — Phase 3A: AI access control-plane (per-key dollar-budget model)
 -- Additive and NON-DESTRUCTIVE. Safe to run after 0001_init.sql + 0002_auth_roles.sql
 -- + 0003_mentor_dashboard.sql on a live project.
 -- Run in: Supabase Dashboard → SQL Editor → New query → paste this whole file → Run.
 --
--- WHAT THIS ADDS: one new table, `student_ai_access`, holding per-student AI
--- access METADATA only — issuance status, a MASKED key hint, budget, and the
--- allowed-models list. It NEVER stores a full/raw virtual API key or any provider
--- secret. The real key lives only in the LiteLLM proxy; if live issuance is ever
--- enabled, the raw key is shown to the admin exactly once and never persisted here.
+-- WHAT THIS ADDS: one new table, `student_ai_access`, the metadata record for a
+-- BuildAI-issued API KEY. It holds the key's status, a MASKED key hint, a DOLLAR
+-- usage budget (default $5), the budget period, the allowed-models list, and the
+-- last-synced dollar spend. It NEVER stores a full/raw virtual API key or any
+-- provider secret. The real key lives only in the LiteLLM/provider proxy; if live
+-- issuance is ever enabled (Phase 3B), the raw key is shown to the admin exactly
+-- once and never persisted here. Spend is dollar-based; RPM/TPM/daily limits are
+-- intentionally out of scope for now.
 --
 -- Note: 0001 already created a thinner `student_api_keys` table. We leave it
--- untouched (no Phase-3A code reads or writes it) and add this richer, RLS-scoped
+-- untouched (no Phase-3 code reads or writes it) and add this richer, RLS-scoped
 -- table for the control plane. Nothing is dropped or altered.
 --
 -- Everything below is idempotent (guarded create/replace, `if not exists`,
@@ -22,19 +25,26 @@ create table if not exists public.student_ai_access (
   -- both linkages: auth user (stable identity) + profile (the app's main user row)
   user_id uuid not null references auth.users(id) on delete cascade,
   profile_id uuid not null references public.profiles(id) on delete cascade,
+  -- human label for the key (a student has one key for now).
+  label text default 'Default API key',
   status text not null default 'pending'
-    check (status in ('pending', 'active', 'suspended', 'revoked')),
-  -- LiteLLM linkage. key_id is the proxy's identifier for the key (NOT the secret).
-  -- key_hint is a MASKED display hint only (e.g. "sk-…a1b2"); never the full key.
+    check (status in ('pending', 'active', 'suspended', 'revoked', 'exhausted')),
+  -- LiteLLM/provider linkage. key_id is the proxy's identifier for the key (NOT
+  -- the secret). key_hint is a MASKED display hint only (e.g. "sk-…a1b2").
   litellm_key_id text,
   litellm_virtual_key_hint text,
-  monthly_budget_usd numeric,
+  -- DOLLAR budget — core requirement, NOT optional. Default $5 per key.
+  monthly_budget_usd numeric not null default 5,
+  budget_period text not null default 'calendar_month',
   allowed_models text[],
+  -- dollar-spend usage, refreshed from the proxy in Phase 3B (spend sync).
+  last_synced_spend_usd numeric not null default 0,
+  last_synced_at timestamptz,
   issued_at timestamptz,
   revoked_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  -- one access record per student keeps admin upserts and the student read simple.
+  -- one access record (one API key) per student keeps admin upserts + reads simple.
   unique (profile_id)
 );
 
