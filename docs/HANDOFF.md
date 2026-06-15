@@ -935,3 +935,129 @@ All honeypot submits used the honeypot path, so **no rows were written** (no val
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed, read, or printed; no secret values, emails, or keys appear in this doc, terminal output, or any commit. No SQL was run against the live database from here, and no test leads were created (only honeypot-path submits, which write nothing). All Git work remains local on branch `main`.
 
+---
+
+# Part 8 — Phase 2A live auth verification (2026-06-15)
+
+End-to-end verification of Phase 2A (committed in Part 7 as `779e2e2`) against the **live Supabase project**, after the operator manually applied `0002_auth_roles.sql` and created/promoted three role test users. **Verification only — no feature code changed** (no issues found). **No `git push`, no remote, no deploy, no secrets/emails printed, `.env.local` never committed.**
+
+> ✅ **Result: Phase 2A passes end-to-end.** Logged-out gating, all three role matrices, email/role display, logout, public routes, and Phase 1 forms all behave exactly as specified. Test rows cleaned up; dev log clean.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean; HEAD = 779e2e2
+node -v ; npm -v                             # v22.12.0 / 10.9.0
+npm install                                  # up to date (401 pkgs); non-blocking EBADENGINE only
+npm run build                                # exit 0, 26 routes (/app* dynamic ƒ, Middleware ƒ)
+npm run lint                                 # exit 0, no warnings/errors
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# env presence verified by NAME ONLY (6 vars, all present); values never printed
+npm run dev                                  # served on :3000; verification driven via Node fetch (curl absent)
+```
+
+**Verification method (no headless browser available):** a temporary Node harness (written to `_p8verify.mjs` / `_p8forms.mjs`, run, then **deleted** — never committed) read `.env.local` locally without printing secrets and:
+- used the **service-role** admin client to enumerate the 3 test users + their `profiles.role`;
+- minted a **real session per user** via `auth.admin.generateLink` + `auth.verifyOtp` (non-destructive — **no passwords were changed**), let `@supabase/ssr` serialize the session cookies, and **replayed those cookies** against the running dev server so requests pass through the real **middleware + Server-Component `requireRole`** path;
+- exercised the Phase 1 form endpoints over HTTP and read back / cleaned up rows with the admin client.
+
+This drives the same auth/session/role-redirect code a browser would; only the literal click on the password form is not a headless action (the session it produces is identical and was fully exercised).
+
+## 2. Migration `0002_auth_roles.sql` applied
+
+✅ Confirmed by the operator (run manually in Supabase Dashboard → SQL Editor) and corroborated live: the auto-provision trigger functioned — all three Auth users have exactly one `profiles` row (`auth.users` total **3**, `profiles` total **3**, 1:1), which is the trigger's behavior.
+
+## 3. Test users verified
+
+✅ Three users present, one per role (addresses intentionally **not** recorded here):
+
+| Role | Present | Profile role correct |
+|---|---|---|
+| student | ✅ | ✅ `student` |
+| mentor | ✅ | ✅ `mentor` |
+| admin | ✅ | ✅ `admin` |
+
+## 4. Student role behavior
+
+| Check | Result |
+|---|---|
+| Sign in → session established | ✅ |
+| `/app` accessible | ✅ 200 |
+| `/app/mentor` blocked | ✅ 307 → `/app` |
+| `/app/admin` blocked | ✅ 307 → `/app` |
+| Correct email shown in shell | ✅ |
+| Correct role badge (`student`) shown | ✅ |
+
+## 5. Mentor role behavior
+
+| Check | Result |
+|---|---|
+| Sign in → session established | ✅ |
+| `/app/mentor` accessible | ✅ 200 |
+| `/app` redirects to own dashboard | ✅ 307 → `/app/mentor` |
+| `/app/admin` blocked | ✅ 307 → `/app/mentor` |
+| Correct email shown in shell | ✅ |
+| Correct role badge (`mentor`) shown | ✅ |
+
+## 6. Admin role behavior
+
+| Check | Result |
+|---|---|
+| Sign in → session established | ✅ |
+| `/app` accessible | ✅ 200 |
+| `/app/mentor` accessible | ✅ 200 |
+| `/app/admin` accessible | ✅ 200 |
+| Correct email shown in shell | ✅ |
+| Correct role badge (`admin`) shown | ✅ |
+
+**Logged-out matrix (no session):** `/app`, `/app/mentor`, `/app/admin` → all **307 → `/login`**; `/login` → **200**. ✅
+
+## 7. Logout behavior
+
+✅ Verified the exact code path `src/lib/auth-actions.ts signOut()` runs: with a live session cookie present, calling `auth.signOut()` **clears the Supabase session cookie** (the `@supabase/ssr` client emits cookie-removal). After clearing, the middleware/page gate redirects to `/login` (same path proven by the logged-out matrix). So logout returns the user to `/login` with no lingering session, for all roles.
+
+## 8. Public route regression result
+
+✅ All sampled public routes return **200**: `/`, `/for-colleges`, `/for-students`, `/for-mentors`, `/contact`, `/privacy`, `/terms`. (Full 13-route public set verified 200 in Part 7; middleware matcher remains `/app/:path*` only.)
+
+## 9. Phase 1 form regression result
+
+✅ All three forms still work end-to-end against live Supabase + Resend:
+
+| Case | pilot | student | mentor |
+|---|---|---|---|
+| **Valid** → `200 {ok:true}` + 1 row + email | ✅ | ✅ | ✅ |
+| **Honeypot** (valid + `hp`) → 200, **no row, no email** | ✅ | — | — |
+| **Invalid** → `400 Invalid submission.`, **no row, no email** | ✅ | — | — |
+
+- **Rows:** exactly **1 tagged row per table** after the valid submits (honeypot + invalid wrote **zero**), confirmed by admin read-back.
+- **Email:** Resend **accepted all three** valid submissions (message ids logged server-side, e.g. pilot `e0544d58…`, student `fa1f8e25…`, mentor `7f3a972a…`). Edge cases sent nothing.
+- **Cleanup:** all **3** `verify-p8` test rows **deleted**; **0 remaining**. (The 3 test emails to `LEAD_NOTIFICATION_TO` are subject-tagged `VERIFY-P8` and can be ignored.)
+
+## 10. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes; `/app`, `/app/mentor`, `/app/admin` dynamic (`ƒ`), Middleware (`ƒ`), marketing routes static (`○`). No type errors. (Same non-blocking Edge-Runtime advisory on the Supabase middleware import noted in Part 7 §10.)
+
+## 11. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 12. Browser / server error result
+
+✅ **Server/dev log clean** across all auth flows, role-matrix requests, public-route loads, and form submits — **zero** errors, exceptions, unhandled rejections, or 500s. Only intended `[email] Resend accepted …` lines appeared. ⚠️ Client DevTools console not captured (no headless browser); a 2-minute human click-through (login → dashboard → logout) remains the only step not coverable here.
+
+## 13. Remaining issues
+
+- 🟡 **Human click-through** of the real password login form → dashboard → logout button (the session/role logic behind it is fully verified live; only the literal UI click is unautomated here).
+- 🟡 **Edge-Runtime advisory** on the Supabase import in middleware (non-blocking; optionally pin middleware to the Node runtime).
+- ⚪ **Deferred by design (out of this phase):** OAuth/magic-link UI; the three real dashboards (student/mentor/admin); LiteLLM/Langfuse/AI keys; payments; Turnstile + rate limiting; lead-management UI (Phase 2D); DPDP `/privacy` + `/terms` before query logging; production domain.
+- ✅ **No code changes were required** — no defects found.
+
+## 14. Is Phase 2A complete?
+
+✅ **Yes.** Supabase Auth (email + password), auto-provisioned profiles, the three roles, the cookie-session + middleware gate, per-role route protection with correct redirects, email/role display, login, and logout are all implemented and **verified live**. The remaining items (§13) are either a quick human visual confirmation or explicitly out of Phase 2A scope. Ready to proceed to Phase 2B (real student dashboard) when you choose.
+
+## 15. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed, and its values, the test-user email addresses, and all keys were never printed in the terminal, this doc, or any commit (only non-sensitive Resend message ids appear). The temporary verification scripts were deleted (not committed). The only DB writes were 3 clearly-tagged `verify-p8` test rows, all deleted (0 remaining); no test users were created or modified (no passwords changed). All Git work remains local on branch `main`.
+
