@@ -27,7 +27,10 @@ export async function POST(req: Request) {
   const supabase = getSupabaseAdmin();
   if (supabase) {
     const { error } = await supabase.from("pilot_inquiries").insert(row);
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    if (error) {
+      console.error("[pilot-inquiry] insert failed:", error.message);
+      return NextResponse.json({ ok: false, error: "Something went wrong. Please try again." }, { status: 500 });
+    }
   } else {
     console.log("[pilot-inquiry] (no DB configured)", row);
   }
