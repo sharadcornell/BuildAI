@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BuildAI — Four More Distinctive Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Oswald:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=Lato:wght@300;400;700&family=Archivo+Black&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700;800&family=Bebas+Neue&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1a1a;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #ddd;
+    padding: 48px 24px;
+  }
+  .page-header { max-width: 1280px; margin: 0 auto 32px; color: #f0f0f0; }
+  .page-header h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 500;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .page-header p { color: #999; font-size: 14px; line-height: 1.5; }
+  .option-label {
+    max-width: 1280px;
+    margin: 56px auto 16px;
+    padding-left: 4px;
+    color: #f0f0f0;
+  }
+  .option-label .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: #999;
+    margin-bottom: 6px;
+  }
+  .option-label h2 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 500;
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+  .option-label p { color: #aaa; font-size: 13px; line-height: 1.5; max-width: 900px; }
+
+  .slide {
+    width: 1280px;
+    height: 720px;
+    max-width: 100%;
+    aspect-ratio: 16/9;
+    margin: 0 auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ===== OPTION D: ENGINEERING BLUEPRINT / DRAFTING ===== */
+  .slide-blueprint {
+    background:
+      linear-gradient(rgba(35,82,124,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(35,82,124,0.06) 1px, transparent 1px),
+      linear-gradient(rgba(35,82,124,0.13) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(35,82,124,0.13) 2px, transparent 2px),
+      #F1ECDC;
+    background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+    color: #1D3B5C;
+    font-family: 'JetBrains Mono', monospace;
+    position: relative;
+    padding: 56px 64px;
+  }
+  /* Outer drawing border */
+  .slide-blueprint::before {
+    content: "";
+    position: absolute;
+    inset: 22px;
+    border: 2px solid #1D3B5C;
+    pointer-events: none;
+  }
+  .slide-blueprint::after {
+    content: "";
+    position: absolute;
+    inset: 30px;
+    border: 0.5px solid #1D3B5C;
+    pointer-events: none;
+  }
+  .slide-blueprint .top-stamp {
+    position: absolute;
+    top: 36px; left: 64px; right: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #1D3B5C;
+    z-index: 2;
+  }
+  .slide-blueprint .top-stamp .left { display:flex; gap: 28px;}
+  .slide-blueprint .top-stamp .right { display:flex; gap: 28px;}
+  .slide-blueprint .content-area {
+    position: relative;
+    z-index: 2;
+    margin-top: 26px;
+    padding-bottom: 100px;
+  }
+  .slide-blueprint .drawing-title {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    color: #1D3B5C;
+    margin-bottom: 4px;
+  }
+  .slide-blueprint h1 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 500;
+    font-size: 56px;
+    line-height: 1.0;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    color: #1D3B5C;
+    margin-bottom: 16px;
+    max-width: 860px;
+  }
+  .slide-blueprint .annotation {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #1D3B5C;
+    max-width: 700px;
+    margin-bottom: 30px;
+  }
+  .slide-blueprint .stats-section {
+    display: flex;
+    justify-content: flex-start;
+    gap: 90px;
+    margin-top: 14px;
+    align-items: flex-end;
+  }
+  .slide-blueprint .stat {
+    position: relative;
+    padding: 14px 0 30px 0;
+  }
+  .slide-blueprint .stat .num {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 130px;
+    line-height: 1;
+    color: #1D3B5C;
+    letter-spacing: -0.02em;
+  }
+  /* Red dimension callout */
+  .slide-blueprint .stat::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 18px;
+    height: 1px;
+    background: #C8362F;
+  }
+  .slide-blueprint .stat::after {
+    /* dimension arrows */
+    content: "";
+    position: absolute;
+    bottom: 14px; left: -2px;
+    width: 0; height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-right: 8px solid #C8362F;
+  }
+  .slide-blueprint .stat .num-suffix {
+    position: absolute;
+    bottom: 22px;
+    right: -2px;
+    width: 0; height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 8px solid #C8362F;
+  }
+  .slide-blueprint .stat .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #C8362F;
+    margin-top: 4px;
+  }
+  .slide-blueprint .stat .desc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #1D3B5C;
+    margin-top: 6px;
+    max-width: 200px;
+  }
+  /* Bottom title block */
+  .slide-blueprint .title-block {
+    position: absolute;
+    bottom: 40px;
+    right: 50px;
+    display: grid;
+    grid-template-columns: 220px 110px 110px;
+    border: 1.5px solid #1D3B5C;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: #1D3B5C;
+    z-index: 3;
+    background: #F1ECDC;
+  }
+  .slide-blueprint .title-block .cell {
+    padding: 8px 10px;
+    border-right: 0.5px solid #1D3B5C;
+    border-bottom: 0.5px solid #1D3B5C;
+  }
+  .slide-blueprint .title-block .cell.last { border-right: none; }
+  .slide-blueprint .title-block .cell.bottomrow { border-bottom: none; }
+  .slide-blueprint .title-block .cell .label {
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #C8362F;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .slide-blueprint .title-block .cell .val {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  /* Annotation arrow pointing at "13" */
+  .slide-blueprint .annot-arrow {
+    position: absolute;
+    bottom: 192px;
+    left: 90px;
+    font-family: 'Special Elite', monospace;
+    font-size: 13px;
+    color: #C8362F;
+    transform: rotate(-3deg);
+    z-index: 3;
+  }
+  /* Section symbol */
+  .slide-blueprint .section-symbol {
+    position: absolute;
+    bottom: 200px;
+    left: 870px;
+    width: 60px;
+    height: 60px;
+    z-index: 3;
+  }
+
+  /* ===== OPTION E: INDIAN EDITORIAL (CARAVAN-STYLE LONG-READ) ===== */
+  .slide-caravan {
+    background: #F1EBDF;
+    color: #221A12;
+    font-family: 'Lato', sans-serif;
+    padding: 48px 64px;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 48px;
+    position: relative;
+  }
+  .slide-caravan .left-col { display: flex; flex-direction: column; }
+  .slide-caravan .right-col { display: flex; flex-direction: column; }
+  .slide-caravan .pub-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: 2px solid #221A12;
+    border-bottom: 0.5px solid #221A12;
+    padding: 8px 0;
+    margin-bottom: 32px;
+    font-family: 'Lato', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    grid-column: 1 / 3;
+  }
+  .slide-caravan .pub-line .center {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    color: #221A12;
+  }
+  .slide-caravan .section-marker {
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: #B33A1F;
+    margin-bottom: 22px;
+  }
+  .slide-caravan h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 64px;
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+    color: #221A12;
+    margin-bottom: 16px;
+  }
+  .slide-caravan h1 em {
+    font-style: italic;
+    font-weight: 400;
+  }
+  .slide-caravan .deck {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.4;
+    color: #4a3d2f;
+    margin-bottom: 22px;
+    max-width: 540px;
+  }
+  .slide-caravan .byline {
+    font-family: 'Lato', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #4a3d2f;
+    margin-bottom: 26px;
+  }
+  .slide-caravan .body-cols {
+    column-count: 2;
+    column-gap: 28px;
+    font-family: 'Source Serif 4', serif;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: #221A12;
+    text-align: justify;
+    margin-top: auto;
+  }
+  .slide-caravan .body-cols .dropcap {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    font-size: 60px;
+    line-height: 0.85;
+    float: left;
+    padding: 8px 6px 0 0;
+    color: #B33A1F;
+  }
+  .slide-caravan .photo-frame {
+    background:
+      radial-gradient(circle at 20% 30%, rgba(180,140,90,0.18), transparent 40%),
+      radial-gradient(circle at 70% 70%, rgba(110,80,50,0.22), transparent 50%),
+      linear-gradient(135deg, #6B5A48 0%, #3D3325 50%, #5A4838 100%);
+    height: 280px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .slide-caravan .photo-frame::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 40% 45%, rgba(245,225,180,0.4) 0, transparent 18%),
+      radial-gradient(circle at 65% 60%, rgba(245,225,180,0.3) 0, transparent 14%);
+  }
+  .slide-caravan .photo-caption {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #4a3d2f;
+    border-left: 2px solid #B33A1F;
+    padding-left: 10px;
+    margin-bottom: 26px;
+  }
+  .slide-caravan .stats-inline {
+    border-top: 0.5px solid #221A12;
+    border-bottom: 0.5px solid #221A12;
+    padding: 18px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }
+  .slide-caravan .stat-inline .num {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 56px;
+    line-height: 0.9;
+    color: #221A12;
+    letter-spacing: -0.02em;
+  }
+  .slide-caravan .stat-inline .num.accent { color: #B33A1F; }
+  .slide-caravan .stat-inline .lbl {
+    font-family: 'Lato', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #4a3d2f;
+    margin-top: 8px;
+    margin-bottom: 4px;
+  }
+  .slide-caravan .stat-inline .desc {
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-size: 10px;
+    line-height: 1.4;
+    color: #4a3d2f;
+  }
+  .slide-caravan .folio {
+    position: absolute;
+    bottom: 18px;
+    left: 64px;
+    right: 64px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Lato', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #4a3d2f;
+  }
+
+  /* ===== OPTION F: RISOGRAPH ZINE (DUOTONE OVERPRINT) ===== */
+  .slide-riso {
+    background: #F4EFE0;
+    color: #1f1f1f;
+    font-family: 'Space Mono', monospace;
+    padding: 56px 64px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* halftone dot texture */
+  .slide-riso::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(rgba(15,20,30,0.10) 1px, transparent 1.3px);
+    background-size: 6px 6px;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+  }
+  .slide-riso .top-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #1f1f1f;
+    padding-bottom: 12px;
+    margin-bottom: 32px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .slide-riso .top-strip .stamp {
+    background: #1f1f1f;
+    color: #F4EFE0;
+    padding: 4px 14px;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    transform: rotate(-1.5deg);
+  }
+  .slide-riso .issue-no {
+    color: #D43A8C;
+    font-weight: 700;
+  }
+  .slide-riso .h1-stack {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .slide-riso h1 {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 108px;
+    line-height: 0.92;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+    color: #1f1f1f;
+    max-width: 1100px;
+    position: relative;
+  }
+  /* Cyan overprint shadow on headline */
+  .slide-riso h1::before {
+    content: attr(data-text);
+    position: absolute;
+    top: 3px; left: 5px;
+    color: #2BC0E8;
+    z-index: -1;
+    mix-blend-mode: multiply;
+  }
+  .slide-riso .subhead {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #1f1f1f;
+    margin-bottom: 30px;
+    max-width: 760px;
+    border-left: 4px solid #D43A8C;
+    padding-left: 14px;
+  }
+  .slide-riso .bigrow {
+    display: flex;
+    align-items: flex-end;
+    gap: 48px;
+    margin-top: 32px;
+  }
+  .slide-riso .bigstat {
+    position: relative;
+  }
+  .slide-riso .bigstat .n {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 170px;
+    line-height: 0.85;
+    color: #1f1f1f;
+    letter-spacing: -0.06em;
+    position: relative;
+    display: inline-block;
+  }
+  .slide-riso .bigstat .n::before {
+    content: attr(data-n);
+    position: absolute;
+    top: 4px; left: 5px;
+    color: #D43A8C;
+    z-index: -1;
+    mix-blend-mode: multiply;
+  }
+  .slide-riso .bigstat:nth-child(2) .n::before { color: #2BC0E8; }
+  .slide-riso .bigstat:nth-child(3) .n::before { color: #D43A8C; }
+  .slide-riso .bigstat .annot {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #1f1f1f;
+    margin-top: 8px;
+    border-top: 2px solid #1f1f1f;
+    padding-top: 6px;
+    max-width: 180px;
+  }
+  .slide-riso .bigstat .annot .pink { color: #D43A8C; font-weight: 700; }
+  .slide-riso .bigstat .annot .cyan { color: #2BC0E8; font-weight: 700; }
+  /* Stamp at corner */
+  .slide-riso .corner-stamp {
+    position: absolute;
+    bottom: 38px;
+    right: 56px;
+    border: 3px solid #D43A8C;
+    color: #D43A8C;
+    padding: 6px 12px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    transform: rotate(-6deg);
+    background: rgba(244,239,224,0.6);
+  }
+  .slide-riso .lower-tag {
+    position: absolute;
+    bottom: 36px;
+    left: 64px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #1f1f1f;
+  }
+
+  /* ===== OPTION G: SWISS MODERNIST / GRID-DRIVEN ===== */
+  .slide-swiss {
+    background: #FFFFFF;
+    color: #111111;
+    font-family: 'Inter Tight', sans-serif;
+    padding: 0;
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 0;
+  }
+  /* Yellow block */
+  .slide-swiss .block-yellow {
+    grid-column: 9 / 13;
+    grid-row: 1 / 5;
+    background: #FFD400;
+  }
+  /* Red block */
+  .slide-swiss .block-red {
+    grid-column: 1 / 4;
+    grid-row: 6 / 9;
+    background: #E63227;
+  }
+  /* Black block */
+  .slide-swiss .block-black {
+    grid-column: 11 / 13;
+    grid-row: 7 / 9;
+    background: #111111;
+  }
+  .slide-swiss .content {
+    grid-column: 1 / 9;
+    grid-row: 1 / 6;
+    padding: 64px;
+    z-index: 2;
+  }
+  .slide-swiss .section-id {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: #111;
+    margin-bottom: 6px;
+  }
+  .slide-swiss .section-id .num {
+    color: #E63227;
+    margin-right: 8px;
+  }
+  .slide-swiss h1 {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 600;
+    font-size: 80px;
+    line-height: 0.96;
+    letter-spacing: -0.035em;
+    color: #111;
+    margin-bottom: 22px;
+    margin-top: 16px;
+    max-width: 760px;
+  }
+  .slide-swiss .h1-emph {
+    color: #E63227;
+  }
+  .slide-swiss .standfirst {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.4;
+    color: #444;
+    max-width: 540px;
+  }
+  /* Stats grid */
+  .slide-swiss .stats-grid {
+    grid-column: 4 / 11;
+    grid-row: 6 / 9;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    z-index: 2;
+    background: white;
+    border-top: 1.5px solid #111;
+  }
+  .slide-swiss .sw-stat {
+    padding: 24px 28px 24px 28px;
+    border-right: 1px solid #111;
+  }
+  .slide-swiss .sw-stat:last-child { border-right: none; }
+  .slide-swiss .sw-stat .num {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 700;
+    font-size: 96px;
+    line-height: 0.92;
+    letter-spacing: -0.06em;
+    color: #111;
+  }
+  .slide-swiss .sw-stat:nth-child(2) .num { color: #E63227; }
+  .slide-swiss .sw-stat .lbl {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+  .slide-swiss .sw-stat .desc {
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #444;
+    max-width: 200px;
+  }
+  /* Yellow block content */
+  .slide-swiss .block-yellow-content {
+    grid-column: 9 / 13;
+    grid-row: 1 / 5;
+    padding: 36px 32px;
+    z-index: 3;
+    align-self: end;
+  }
+  .slide-swiss .block-yellow-content .tag {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #111;
+    margin-bottom: 14px;
+  }
+  .slide-swiss .block-yellow-content .quote {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: #111;
+  }
+  /* Slide footer */
+  .slide-swiss .footer-row {
+    grid-column: 1 / 13;
+    grid-row: 9 / 10;
+    padding: 16px 64px 22px 64px;
+    border-top: 1px solid #111;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #111;
+    z-index: 4;
+    background: white;
+  }
+  .slide-swiss .footer-row .black-mark {
+    background: #111;
+    color: white;
+    padding: 4px 10px;
+  }
+
+  @media (max-width: 1380px) {
+    .slide { transform-origin: top left; transform: scale(0.85); margin-bottom: -108px; }
+    .option-label, .page-header { max-width: 1090px; }
+  }
+  @media (max-width: 1100px) {
+    .slide { transform: scale(0.7); margin-bottom: -216px; }
+    .option-label, .page-header { max-width: 900px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>BuildAI — four more design directions</h1>
+  <p>Each rooted in a specific human design tradition that pitch decks almost never borrow from. Same content as before — the "Introducing BuildAI" stats slide.</p>
+</div>
+
+<!-- ===== OPTION D: ENGINEERING BLUEPRINT ===== -->
+<div class="option-label">
+  <div class="tag">OPTION D</div>
+  <h2>Engineering blueprint / drafting</h2>
+  <p>The visual language of a technical drawing. Drafting-paper grid, ink-blue + red annotation marks, monospace lettering, dimension lines and arrows, a title-block legend in the corner. Conceptually perfect: we make engineers who ship, so our deck looks like an engineering document. Almost no AI-generated deck looks like this.</p>
+</div>
+
+<div class="slide slide-blueprint">
+  <div class="top-stamp">
+    <div class="left">
+      <span>BAI / DWG. NO. 2026-04</span>
+      <span>SHT 04 / 14</span>
+    </div>
+    <div class="right">
+      <span>REV. A</span>
+      <span>NOT TO SCALE</span>
+    </div>
+  </div>
+  <div class="content-area">
+    <div class="drawing-title">DRAWING TITLE</div>
+    <h1>The Apprenticeship —<br>Program Overview</h1>
+    <div class="annotation">
+      // 13-WEEK APPLIED AI PRODUCT ENGINEERING APPRENTICESHIP<br>
+      // BUILT FOR ENGINEERING STUDENTS · INTEGRATED WITH ENGINEERING COLLEGES<br>
+      // DELIVERY: REMOTE-FIRST · PODS OF 8&ndash;12 · 1 LEAD MENTOR PER POD
+    </div>
+    <div class="stats-section">
+      <div class="stat">
+        <span class="num">13</span>
+        <span class="num-suffix"></span>
+        <div class="lbl">WEEKS — DURATION</div>
+        <div class="desc">Aligned with summer + winter intensive windows</div>
+      </div>
+      <div class="stat">
+        <span class="num">100</span>
+        <span class="num-suffix"></span>
+        <div class="lbl">STUDENTS — PER COHORT</div>
+        <div class="desc">Organised into 8&ndash;12 pods, each led by a working engineer</div>
+      </div>
+      <div class="stat">
+        <span class="num">0</span>
+        <span class="num-suffix"></span>
+        <div class="lbl">LECTURES — BY DESIGN</div>
+        <div class="desc">No slides, no theory blocks — students ship from week one</div>
+      </div>
+    </div>
+  </div>
+  <div class="annot-arrow">↗ duration · spec'd to summer / winter intensives</div>
+  <div class="title-block">
+    <div class="cell"><span class="label">Project</span><span class="val">BuildAI</span></div>
+    <div class="cell"><span class="label">Sheet</span><span class="val">04 / 14</span></div>
+    <div class="cell last"><span class="label">Rev</span><span class="val">A</span></div>
+    <div class="cell bottomrow"><span class="label">Drawn by</span><span class="val">S. Agrawal</span></div>
+    <div class="cell bottomrow"><span class="label">Date</span><span class="val">05 . 2026</span></div>
+    <div class="cell bottomrow last"><span class="label">Scale</span><span class="val">NTS</span></div>
+  </div>
+</div>
+
+<!-- ===== OPTION E: INDIAN EDITORIAL (CARAVAN-STYLE) ===== -->
+<div class="option-label">
+  <div class="tag">OPTION E</div>
+  <h2>Indian editorial — long-form magazine feature</h2>
+  <p>The visual language of <em>The Caravan</em>, <em>Open</em>, or an <em>India Today</em> long-form feature. Cream paper, Cormorant serif, two-column body, drop caps, sepia photography, vermilion accent, byline/dateline, page folio. Premium, distinctly Indian, refuses generic global tech. Reads as if a serious journalist wrote about your program — the deck IS the feature.</p>
+</div>
+
+<div class="slide slide-caravan">
+  <div class="pub-line">
+    <div>BuildAI Briefing &nbsp;·&nbsp; Vol. 01</div>
+    <div class="center"><em>Engineers, not enrolees.</em></div>
+    <div>Issue No. 04 &nbsp;·&nbsp; May 2026</div>
+  </div>
+
+  <div class="left-col">
+    <div class="section-marker">The Program · Section 04</div>
+    <h1>A thirteen-week apprenticeship for engineers who'd rather <em>ship</em> than sit through slides.</h1>
+    <div class="deck">A new kind of programme is being built for India's tier-2 engineering colleges — one that treats undergraduates the way an AI startup treats its first three hires.</div>
+    <div class="byline">Words — BuildAI / Photographs — Demo Day archive</div>
+    <div class="body-cols">
+      <span class="dropcap">F</span>or every hundred undergraduates in a tier-2 CS programme, perhaps twenty have the instincts of a builder. They write code that wasn't assigned. They deploy on weekends. They watch what their seniors did at startups and want that, not the campus placement queue. BuildAI exists for them — and for the colleges that quietly already know who they are.
+    </div>
+  </div>
+
+  <div class="right-col">
+    <div class="photo-frame"></div>
+    <div class="photo-caption">A Wednesday in Week 6: a pod reviews a peer's pull request before the day's stand-up. Photograph from the BuildAI Demo Day archive.</div>
+    <div class="stats-inline">
+      <div class="stat-inline">
+        <div class="num">13</div>
+        <div class="lbl">Weeks</div>
+        <div class="desc">Aligned with intensive windows</div>
+      </div>
+      <div class="stat-inline">
+        <div class="num">100</div>
+        <div class="lbl">Students / cohort</div>
+        <div class="desc">In pods of eight to twelve</div>
+      </div>
+      <div class="stat-inline">
+        <div class="num accent">0</div>
+        <div class="lbl">Lectures</div>
+        <div class="desc">By design — they ship instead</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="folio">
+    <div>BuildAI · Section 04 / The Program</div>
+    <div>—— 04 ——</div>
+    <div>contact@meetskybloom.com</div>
+  </div>
+</div>
+
+<!-- ===== OPTION F: RISOGRAPH ZINE ===== -->
+<div class="option-label">
+  <div class="tag">OPTION F</div>
+  <h2>Risograph zine / two-colour overprint</h2>
+  <p>Halftone dot texture, two-ink overprint (fluoro pink + cyan, registration deliberately off by a few pixels), heavy block-letter headlines, monospaced body. References Riso-printed zines, art-school posters, indie-press culture. Confident and modern; deliberately imperfect. Best for student-facing materials and engineer-recruitment one-pagers — likely too irreverent for TPO sales meetings.</p>
+</div>
+
+<div class="slide slide-riso">
+  <div class="top-strip">
+    <div>BuildAI &nbsp;//&nbsp; <span class="issue-no">No. 04</span> &nbsp;//&nbsp; The Program</div>
+    <div class="stamp">Two-Print / 05.26</div>
+  </div>
+  <div class="h1-stack">
+    <h1 data-text="13 Weeks. Ship Real Things.">13 Weeks.<br>Ship Real Things.</h1>
+  </div>
+  <div class="subhead">An applied AI product engineering apprenticeship for India's most ambitious engineering students. Remote-first. Pod-based. Built around real PRs, not recorded lectures.</div>
+  <div class="bigrow">
+    <div class="bigstat">
+      <span class="n" data-n="13">13</span>
+      <div class="annot"><span class="pink">WK ·</span> duration, aligned to intensive windows</div>
+    </div>
+    <div class="bigstat">
+      <span class="n" data-n="100">100</span>
+      <div class="annot"><span class="cyan">STU ·</span> per cohort, in pods of 8&ndash;12</div>
+    </div>
+    <div class="bigstat">
+      <span class="n" data-n="0">0</span>
+      <div class="annot"><span class="pink">LEC ·</span> we don't do lectures</div>
+    </div>
+  </div>
+  <div class="lower-tag">PRINTED IN TWO INKS · DELIBERATELY OFF-REGISTER</div>
+  <div class="corner-stamp">First Cohort &nbsp;/&nbsp; Pilot Print Run</div>
+</div>
+
+<!-- ===== OPTION G: SWISS MODERNIST / GRID-DRIVEN ===== -->
+<div class="option-label">
+  <div class="tag">OPTION G</div>
+  <h2>Swiss modernist / international typographic style</h2>
+  <p>The visual language of Müller-Brockmann, Vignelli, IBM's 1962–1980s identity. Mathematical 12-column grid, primary-colour blocks as compositional elements, asymmetric layout, condensed sans-serif, severe horizontals. Cold, intellectual, "we read Vignelli." Distinct from the warm/earthy options — this is the precise/architectural variant.</p>
+</div>
+
+<div class="slide slide-swiss">
+  <div class="block-yellow"></div>
+  <div class="block-red"></div>
+  <div class="block-black"></div>
+  <div class="content">
+    <div class="section-id"><span class="num">04 / 14</span> THE PROGRAM</div>
+    <h1>A 13&#8209;week <span class="h1-emph">apprenticeship.</span><br>Not a course.</h1>
+    <div class="standfirst">Built for engineering students. Integrated with engineering colleges. Designed around shipping, not sitting through slides.</div>
+  </div>
+  <div class="block-yellow-content">
+    <div class="tag">Cohort 01</div>
+    <div class="quote">Earned,<br>not granted.</div>
+  </div>
+  <div class="stats-grid">
+    <div class="sw-stat">
+      <div class="num">13</div>
+      <div class="lbl">Weeks</div>
+      <div class="desc">Aligned to intensive windows</div>
+    </div>
+    <div class="sw-stat">
+      <div class="num">100</div>
+      <div class="lbl">Students per cohort</div>
+      <div class="desc">In pods of 8&ndash;12, one mentor each</div>
+    </div>
+    <div class="sw-stat">
+      <div class="num">0</div>
+      <div class="lbl">Lectures</div>
+      <div class="desc">Students ship from week one</div>
+    </div>
+  </div>
+  <div class="footer-row">
+    <div>BuildAI / Programme Overview</div>
+    <div class="black-mark">04 / 14</div>
+  </div>
+</div>
+
+</body>
+</html>

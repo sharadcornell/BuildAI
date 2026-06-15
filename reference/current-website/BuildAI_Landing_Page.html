@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BuildAI — AI-Native Engineering Apprenticeship for India</title>
+  <meta name="description" content="A 13-week AI-native product engineering apprenticeship. We don't teach AI — we make engineers who ship.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0A2540;
+      --navy-dark: #061931;
+      --mint: #00D4AA;
+      --mint-dark: #00B894;
+      --ink: #1A1F36;
+      --text: #425466;
+      --muted: #697386;
+      --border: #E3E8EE;
+      --surface: #F6F9FC;
+      --white: #FFFFFF;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      line-height: 1.6;
+      background: var(--white);
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 37, 64, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 18px 0;
+    }
+    nav .container { display: flex; justify-content: space-between; align-items: center; }
+    .logo { display: flex; align-items: center; gap: 12px; color: var(--white); text-decoration: none; }
+    .logo-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--mint); }
+    .logo-text { font-weight: 700; font-size: 15px; letter-spacing: 2px; }
+    .nav-links { display: flex; gap: 28px; align-items: center; }
+    .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--white); }
+    .nav-cta {
+      background: var(--mint); color: var(--navy-dark) !important;
+      padding: 10px 18px; border-radius: 8px; font-weight: 600;
+    }
+
+    /* HERO */
+    .hero {
+      background: var(--navy-dark);
+      color: var(--white);
+      padding: 100px 0 120px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; top: -100px; right: -100px; width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(0,212,170,0.12) 0%, transparent 70%);
+    }
+    .hero-eyebrow { color: var(--mint); font-size: 13px; font-weight: 600; letter-spacing: 4px; margin-bottom: 24px; }
+    .hero h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: 1.1;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .hero h1 .italic { font-style: italic; font-weight: 400; color: rgba(255,255,255,0.95); }
+    .hero h1 .mint { color: var(--mint); }
+    .hero .sub {
+      font-size: 20px;
+      color: rgba(255,255,255,0.65);
+      max-width: 640px;
+      margin: 32px 0 40px;
+      line-height: 1.55;
+    }
+    .hero-ctas { display: flex; gap: 16px; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--mint); color: var(--navy-dark);
+      padding: 16px 28px; border-radius: 8px;
+      font-weight: 600; font-size: 15px; text-decoration: none;
+      transition: transform 0.15s ease, background 0.15s ease;
+      display: inline-block;
+    }
+    .btn-primary:hover { transform: translateY(-1px); background: var(--mint-dark); }
+    .btn-secondary {
+      background: transparent; color: var(--white);
+      padding: 16px 28px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-weight: 500; font-size: 15px; text-decoration: none;
+      transition: background 0.15s ease;
+      display: inline-block;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.08); }
+
+    /* SECTION SHARED */
+    section { padding: 100px 0; }
+    .eyebrow { color: var(--mint); font-size: 12px; font-weight: 600; letter-spacing: 4px; margin-bottom: 16px; }
+    h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(30px, 4vw, 44px);
+      line-height: 1.2;
+      margin-bottom: 24px;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+    .lede { font-size: 18px; color: var(--text); max-width: 720px; margin-bottom: 56px; }
+
+    /* PROBLEM SECTION */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+    .col-card {
+      padding: 36px 32px;
+      border-radius: 16px;
+    }
+    .col-card.light { background: var(--surface); border: 1px solid var(--border); }
+    .col-card.dark { background: var(--navy); color: var(--white); }
+    .col-card h3 { font-size: 13px; letter-spacing: 3px; font-weight: 600; margin-bottom: 24px; }
+    .col-card.light h3 { color: #E25950; }
+    .col-card.dark h3 { color: var(--mint); }
+    .col-card ul { list-style: none; }
+    .col-card li {
+      padding: 10px 0;
+      padding-left: 24px;
+      position: relative;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    .col-card li::before {
+      content: ''; position: absolute; left: 0; top: 19px;
+      width: 6px; height: 6px; border-radius: 50%;
+    }
+    .col-card.light li::before { background: var(--ink); }
+    .col-card.dark li::before { background: var(--mint); }
+    .col-card.dark li { color: rgba(255,255,255,0.9); }
+
+    /* HOW IT WORKS */
+    .how-bg { background: var(--surface); }
+    .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+    @media (max-width: 768px) { .steps { grid-template-columns: 1fr; } }
+    .step {
+      background: var(--white);
+      padding: 28px 22px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--mint);
+    }
+    .step-day { font-size: 12px; font-weight: 700; letter-spacing: 3px; color: var(--mint); margin-bottom: 12px; }
+    .step h4 { font-size: 16px; margin-bottom: 8px; color: var(--ink); }
+    .step p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* CURRICULUM */
+    .modules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    @media (max-width: 768px) { .modules { grid-template-columns: 1fr; } }
+    .module {
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 28px;
+      border-radius: 12px;
+      border-top: 3px solid var(--mint);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .module:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(10,37,64,0.08); }
+    .module .num { color: var(--mint); font-size: 12px; font-weight: 700; letter-spacing: 3px; }
+    .module .weeks { color: var(--muted); font-size: 12px; float: right; }
+    .module h4 { font-size: 20px; margin: 12px 0 8px; color: var(--ink); font-family: 'Playfair Display', serif; }
+    .module p { font-size: 14px; color: var(--text); }
+
+    /* TIERS */
+    .tiers-bg { background: var(--navy-dark); color: var(--white); }
+    .tiers-bg h2, .tiers-bg .lede { color: var(--white); }
+    .tiers-bg .lede { color: rgba(255,255,255,0.6); }
+    .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    @media (max-width: 768px) { .tiers { grid-template-columns: 1fr; } }
+    .tier {
+      background: var(--navy);
+      padding: 32px 28px;
+      border-radius: 12px;
+      border-top: 3px solid;
+    }
+    .tier.t1 { border-color: #697386; }
+    .tier.t2 { border-color: rgba(255,255,255,0.6); }
+    .tier.t3 { border-color: var(--mint); background: linear-gradient(135deg, var(--navy) 0%, #11324d 100%); }
+    .tier .pct {
+      font-family: 'Playfair Display', serif;
+      font-size: 56px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+    .tier.t1 .pct { color: rgba(255,255,255,0.5); }
+    .tier.t2 .pct { color: rgba(255,255,255,0.85); }
+    .tier.t3 .pct { color: var(--mint); }
+    .tier .label { font-size: 13px; font-weight: 700; letter-spacing: 3px; margin-bottom: 12px; }
+    .tier.t1 .label { color: rgba(255,255,255,0.6); }
+    .tier.t2 .label { color: rgba(255,255,255,0.9); }
+    .tier.t3 .label { color: var(--mint); }
+    .tier p { font-size: 14px; color: rgba(255,255,255,0.7); }
+
+    /* FOR */
+    .for-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .for-grid { grid-template-columns: 1fr; } }
+    .for-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 36px 30px;
+      border-radius: 12px;
+    }
+    .for-card .label { color: var(--mint); font-size: 12px; font-weight: 700; letter-spacing: 4px; margin-bottom: 16px; }
+    .for-card h3 { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--ink); margin-bottom: 16px; }
+    .for-card p { color: var(--text); font-size: 15px; margin-bottom: 16px; }
+    .for-card ul { list-style: none; }
+    .for-card li {
+      font-size: 14px; color: var(--text);
+      padding: 6px 0 6px 20px; position: relative;
+    }
+    .for-card li::before {
+      content: '→'; position: absolute; left: 0; color: var(--mint); font-weight: 700;
+    }
+
+    /* FOUNDER */
+    .founder-bg { background: var(--surface); }
+    .founder-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 56px;
+      border: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+    @media (max-width: 768px) { .founder-card { grid-template-columns: 1fr; padding: 32px; text-align: center; } }
+    .avatar {
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      background: var(--navy);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--mint);
+      font-family: 'Playfair Display', serif;
+      font-size: 64px;
+      font-weight: 700;
+    }
+    @media (max-width: 768px) { .avatar { margin: 0 auto; } }
+    .founder-content h3 { font-family: 'Playfair Display', serif; font-size: 32px; color: var(--ink); margin-bottom: 4px; }
+    .founder-content .role { color: var(--mint); font-weight: 600; margin-bottom: 20px; }
+    .founder-content p { color: var(--text); font-size: 16px; line-height: 1.7; }
+    .founder-content strong { color: var(--ink); }
+
+    /* CTA */
+    .cta-bg {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%);
+      color: var(--white);
+    }
+    .cta-bg h2 { color: var(--white); }
+    .cta-bg .lede { color: rgba(255,255,255,0.7); }
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 56px; }
+    @media (max-width: 768px) { .contact-grid { grid-template-columns: 1fr; } }
+    .contact-card {
+      background: var(--navy);
+      padding: 36px;
+      border-radius: 12px;
+      border-left: 3px solid var(--mint);
+    }
+    .contact-card h4 { color: var(--mint); font-size: 12px; letter-spacing: 3px; margin-bottom: 16px; font-weight: 700; }
+    .contact-card p { color: rgba(255,255,255,0.85); margin-bottom: 16px; line-height: 1.6; }
+    .contact-card a { color: var(--mint); text-decoration: none; font-weight: 600; }
+    .contact-card a:hover { text-decoration: underline; }
+
+    /* FOOTER */
+    footer { padding: 40px 0; background: var(--navy-dark); color: rgba(255,255,255,0.5); font-size: 14px; }
+    footer .container { display: flex; justify-content: space-between; align-items: center; }
+    @media (max-width: 768px) { footer .container { flex-direction: column; gap: 16px; text-align: center; } }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="container">
+      <a href="#" class="logo">
+        <span class="logo-dot"></span>
+        <span class="logo-text">BUILDAI</span>
+      </a>
+      <div class="nav-links">
+        <a href="#how">How it works</a>
+        <a href="#curriculum">Curriculum</a>
+        <a href="#for">Partnerships</a>
+        <a href="#contact" class="nav-cta">Get in touch</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <div class="hero-eyebrow">AI-NATIVE APPRENTICESHIP / INDIA</div>
+      <h1>
+        <span class="italic">We don't teach AI.</span><br>
+        <span class="mint">We make engineers who ship.</span>
+      </h1>
+      <p class="sub">
+        A 13-week applied AI product engineering apprenticeship, integrated with engineering colleges across India. Students work the way they would inside an AI-native startup — shipping real products, getting code review from working AI engineers, deploying to production.
+      </p>
+      <div class="hero-ctas">
+        <a href="#contact" class="btn-primary">Partner with us</a>
+        <a href="#curriculum" class="btn-secondary">See the curriculum</a>
+      </div>
+    </div>
+  </header>
+
+  <section id="problem">
+    <div class="container">
+      <div class="eyebrow">THE GAP</div>
+      <h2>Indian engineering colleges are not producing the engineers AI-first startups want to hire.</h2>
+      <p class="lede">There is a structural mismatch between what colleges teach and what modern AI-first startups need. BuildAI closes that mismatch through apprenticeship — not lectures.</p>
+      <div class="two-col">
+        <div class="col-card light">
+          <h3>WHAT COLLEGES PRODUCE</h3>
+          <ul>
+            <li>Theory without execution</li>
+            <li>Cannot ship a working product end-to-end</li>
+            <li>Cannot deploy code to production</li>
+            <li>Have never used Cursor or Claude Code</li>
+            <li>Cannot debug AI-generated code</li>
+            <li>No experience with real startup workflows</li>
+          </ul>
+        </div>
+        <div class="col-card dark">
+          <h3>WHAT STARTUPS NEED</h3>
+          <ul>
+            <li>AI-assisted development fluency</li>
+            <li>Shipping velocity over algorithm depth</li>
+            <li>Product and architecture judgment</li>
+            <li>Evaluation discipline for AI features</li>
+            <li>Async collaboration habits</li>
+            <li>Debug AI hallucination, not just human bugs</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="how-bg">
+    <div class="container">
+      <div class="eyebrow">HOW IT WORKS</div>
+      <h2>A week inside BuildAI looks like a week inside an AI startup.</h2>
+      <p class="lede">Async-heavy weekdays for building. Live mentor sessions on weekends. PRs reviewed daily. Demos every two weeks. Recorded, archived, public.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-day">MON</div>
+          <h4>Sprint Kickoff</h4>
+          <p>Week plan posted async. Students commit in Linear.</p>
+        </div>
+        <div class="step">
+          <div class="step-day">TUE–THU</div>
+          <h4>Build Days</h4>
+          <p>AI-assisted implementation. PRs opened. Peer reviews.</p>
+        </div>
+        <div class="step">
+          <div class="step-day">FRI</div>
+          <h4>Demo Day</h4>
+          <p>3-min Loom demo from every student. Public archive.</p>
+        </div>
+        <div class="step">
+          <div class="step-day">SAT</div>
+          <h4>Live Session</h4>
+          <p>90-min architecture review, debugging, Q&A with mentor.</p>
+        </div>
+        <div class="step">
+          <div class="step-day">SUN</div>
+          <h4>Peer Review</h4>
+          <p>Cross-pod portfolio reviews. Reading group reflections.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="curriculum">
+    <div class="container">
+      <div class="eyebrow">CURRICULUM</div>
+      <h2>Six modules. Each one ends with a shipped product.</h2>
+      <p class="lede">Organized around capabilities startups hire for, not isolated tools. Every module produces a deployed deliverable that lives in the student's public portfolio.</p>
+      <div class="modules">
+        <div class="module">
+          <span class="num">M0</span>
+          <span class="weeks">Week 1</span>
+          <h4>AI-Native OS</h4>
+          <p>How to think when AI writes 60–80% of your code. Ship a real app by Friday.</p>
+        </div>
+        <div class="module">
+          <span class="num">M1</span>
+          <span class="weeks">Weeks 2–4</span>
+          <h4>Product Engineering</h4>
+          <p>Full-stack web apps with auth, DB, and deployment. Two deployed apps as output.</p>
+        </div>
+        <div class="module">
+          <span class="num">M2</span>
+          <span class="weeks">Weeks 5–7</span>
+          <h4>AI Product Patterns</h4>
+          <p>LLM APIs, RAG, embeddings, agents. One real AI-powered product solving a real problem.</p>
+        </div>
+        <div class="module">
+          <span class="num">M3</span>
+          <span class="weeks">Week 8</span>
+          <h4>Eval & Reliability</h4>
+          <p>Build eval suites. Catch regressions. The discipline that distinguishes BuildAI graduates.</p>
+        </div>
+        <div class="module">
+          <span class="num">M4</span>
+          <span class="weeks">Weeks 9–10</span>
+          <h4>Shipping in a Startup</h4>
+          <p>Team sprint. Linear tickets. PR reviews. Async standups. Production deployments.</p>
+        </div>
+        <div class="module">
+          <span class="num">M5</span>
+          <span class="weeks">Weeks 11–13</span>
+          <h4>Capstone</h4>
+          <p>Real product. Real users. Externally reviewed by working AI startup engineers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tiers-bg">
+    <div class="container">
+      <div class="eyebrow">CERTIFICATION</div>
+      <h2>Three tiers. Earned, not granted.</h2>
+      <p class="lede">We intentionally fail or hold back 15–25% of every cohort. Scarcity is what creates startup trust. Distinction is reserved for the top ~10%.</p>
+      <div class="tiers">
+        <div class="tier t1">
+          <div class="pct">~70%</div>
+          <div class="label">PARTICIPATED</div>
+          <p>Finished the program, completed all assignments. Letter of participation.</p>
+        </div>
+        <div class="tier t2">
+          <div class="pct">~20%</div>
+          <div class="label">APPRENTICE CERTIFIED</div>
+          <p>All 7 rubric dimensions scored 3+. Public BuildAI certificate, portfolio listed.</p>
+        </div>
+        <div class="tier t3">
+          <div class="pct">~10%</div>
+          <div class="label">DISTINCTION</div>
+          <p>Top performers, externally validated, fast-tracked to startup placement.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="for">
+    <div class="container">
+      <div class="eyebrow">PARTNERSHIPS</div>
+      <h2>Built for colleges, students, and startups.</h2>
+      <p class="lede">BuildAI is a three-sided system: distribution through colleges, talent for startups, opportunity for students.</p>
+      <div class="for-grid">
+        <div class="for-card">
+          <div class="label">FOR COLLEGES</div>
+          <h3>An AI program your TPO can stand behind.</h3>
+          <p>Zero faculty burden. Documented industry partnership. Real measurable student outcomes you can put in admissions and NAAC reports.</p>
+          <ul>
+            <li>Credible AI program for admissions</li>
+            <li>₹5–7K administrative margin per student</li>
+            <li>Public student portfolios as marketing</li>
+            <li>BuildAI handles all delivery</li>
+          </ul>
+        </div>
+        <div class="for-card">
+          <div class="label">FOR STUDENTS</div>
+          <h3>An apprenticeship, not a course.</h3>
+          <p>By Week 13, you have a public GitHub portfolio with 5+ deployed AI products, reviewed by working engineers from real AI startups.</p>
+          <ul>
+            <li>Real apprenticeship, real PR reviews</li>
+            <li>5+ shipped, deployed AI products</li>
+            <li>External review by AI startup engineers</li>
+            <li>Pathway to startup internships (top tier)</li>
+          </ul>
+        </div>
+        <div class="for-card">
+          <div class="label">FOR STARTUPS</div>
+          <h3>Hire from a vetted AI-native pipeline.</h3>
+          <p>Distinction graduates have shipped real products, written real evals, and survived rigorous external review. Pre-vetted talent without the recruiting overhead.</p>
+          <ul>
+            <li>Pre-vetted Distinction graduates</li>
+            <li>Public portfolios for evaluation</li>
+            <li>Paid internship pipeline</li>
+            <li>Full-time hiring fee model</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="founder-bg">
+    <div class="container">
+      <div class="eyebrow">FOUNDING TEAM</div>
+      <h2>Built by a founder who has lived this gap.</h2>
+      <div class="founder-card">
+        <div class="avatar">SA</div>
+        <div class="founder-content">
+          <h3>Sharad Agrawal</h3>
+          <div class="role">Founder, BuildAI</div>
+          <p>
+            <strong>IIT Bombay</strong> (Masters, 2018) and <strong>Cornell Johnson</strong> (MBA, 2024). Currently founder of an AI-native company in the United States. India operations led by a co-founder (recruitment in progress) with deep college and edtech network.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="cta-bg">
+    <div class="container">
+      <div class="eyebrow">GET IN TOUCH</div>
+      <h2>Let's run a pilot together.</h2>
+      <p class="lede">Even a 30-student first cohort produces public proof your institution can show. We are actively selecting 3–4 pilot college partners.</p>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <h4>FOR COLLEGES & TPOS</h4>
+          <p>If you're a Training & Placement Officer, Dean, HOD, or Innovation Cell lead — we'd love to discuss a pilot for your institution.</p>
+          <a href="mailto:contact@buildai.in?subject=BuildAI%20College%20Partnership">contact@buildai.in →</a>
+        </div>
+        <div class="contact-card">
+          <h4>FOR STARTUPS & MENTORS</h4>
+          <p>Working at an AI-first startup? Want to hire AI-native engineers, or mentor a pod of ambitious students — we want to hear from you.</p>
+          <a href="mailto:contact@buildai.in?subject=BuildAI%20Mentor%20%2F%20Hiring">contact@buildai.in →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div>BuildAI © 2026  /  AI-Native Apprenticeship for India</div>
+      <div>Sharad Agrawal  /  Founder  /  contact@buildai.in</div>
+    </div>
+  </footer>
+
+</body>
+</html>

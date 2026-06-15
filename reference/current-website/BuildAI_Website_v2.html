@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuildAI — We don't teach AI. We make engineers who ship.</title>
+<meta name="description" content="A 13-week AI-native product engineering apprenticeship for India's engineering colleges. Earned, not granted.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0A2540; --navy-2:#0E2F4F; --navy-3:#123A5E;
+  --mint:#00D4AA; --mint-dark:#079a80;
+  --ink:#10202E; --grey:#5B6B7B; --line:#DCE4EA; --line-dark:rgba(255,255,255,.12);
+  --paper:#FAFAF7; --card:#F2F4F1; --ice:#BFD3E0;
+  --serif:'Playfair Display',Georgia,serif; --sans:'Inter',-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+::selection{background:var(--mint);color:var(--navy)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--mint-dark)}
+.kicker .n{color:var(--grey);margin-right:14px}
+section{padding:104px 0}
+h2{font-family:var(--serif);font-weight:600;font-size:clamp(30px,4vw,46px);line-height:1.12;letter-spacing:-.01em;margin:18px 0 14px}
+.lede{font-size:18px;color:var(--grey);max-width:620px}
+.rule{border:none;border-top:1px solid var(--line);margin:0}
+a{color:inherit}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;background:rgba(10,37,64,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line-dark)}
+nav .bar{display:flex;align-items:center;justify-content:space-between;height:64px}
+.wordmark{font-weight:800;letter-spacing:.06em;color:#fff;font-size:17px;text-decoration:none}
+.wordmark span{color:var(--mint)}
+nav ul{display:flex;gap:30px;list-style:none}
+nav ul a{color:var(--ice);text-decoration:none;font-size:13.5px;font-weight:500;letter-spacing:.02em}
+nav ul a:hover{color:#fff}
+.btn{display:inline-block;padding:13px 26px;font-size:14px;font-weight:700;letter-spacing:.04em;text-decoration:none;border:1.5px solid transparent;transition:all .18s ease;cursor:pointer}
+.btn-mint{background:var(--mint);color:var(--navy)}
+.btn-mint:hover{background:#0be6ba}
+.btn-ghost{border-color:rgba(255,255,255,.35);color:#fff}
+.btn-ghost:hover{border-color:var(--mint);color:var(--mint)}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-navy:hover{background:var(--navy-3)}
+nav .btn{padding:9px 18px;font-size:13px}
+@media(max-width:860px){nav ul{display:none}}
+
+/* hero */
+.hero{background:var(--navy);color:#fff;padding:120px 0 0;position:relative;overflow:hidden}
+.hero .corner{position:absolute;top:0;right:0;width:230px;height:150px;background:var(--mint)}
+.hero .corner p{position:absolute;right:24px;top:42px;color:var(--navy);font-weight:800;font-size:14px;letter-spacing:.18em;text-align:right;line-height:1.5}
+.hero h1{font-family:var(--serif);font-weight:600;font-size:clamp(44px,6.4vw,84px);line-height:1.04;letter-spacing:-.015em;max-width:980px;margin:26px 0 26px}
+.hero h1 em{font-style:italic;color:var(--mint)}
+.hero .sub{font-size:19px;color:var(--ice);max-width:560px;margin-bottom:40px}
+.hero .ctas{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:88px}
+.statstrip{border-top:1px solid var(--line-dark);padding:34px 0 40px;display:grid;grid-template-columns:repeat(5,1fr);gap:24px}
+.statstrip .s b{display:block;font-size:38px;font-weight:800;letter-spacing:-.02em;color:#fff;line-height:1.1}
+.statstrip .s b i{font-style:normal;color:var(--mint)}
+.statstrip .s span{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ice);font-weight:600}
+@media(max-width:860px){.statstrip{grid-template-columns:repeat(2,1fr)}.hero .corner{display:none}}
+
+/* trust line */
+.trust{background:var(--paper);border-bottom:1px solid var(--line);padding:26px 0}
+.trust .wrap{display:flex;align-items:baseline;gap:26px;flex-wrap:wrap}
+.trust em{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--grey);font-style:normal;font-weight:700}
+.trust b{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:.01em}
+.trust b+b::before{content:"·";margin:0 18px 0 -8px;color:var(--mint-dark)}
+
+/* gap */
+.gap-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:72px;align-items:start;margin-top:48px}
+.gap-grid .big{font-family:var(--serif);font-size:clamp(24px,2.6vw,32px);line-height:1.35;font-weight:500}
+.gap-grid .big strong{color:var(--mint-dark);font-weight:600}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line)}
+.twocol .col{padding:30px 28px}
+.twocol .col:first-child{background:var(--navy);color:#fff}
+.twocol .col:last-child{background:var(--card)}
+.twocol h4{font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;margin-bottom:18px}
+.twocol .col:first-child h4{color:var(--mint)}
+.twocol .col:last-child h4{color:var(--mint-dark)}
+.twocol li{list-style:none;font-size:13.5px;padding:7px 0;border-bottom:1px solid rgba(127,127,127,.14)}
+.twocol li:last-child{border:none}
+.twocol .col:first-child li{color:var(--ice)}
+.twocol .col:last-child li{color:var(--ink)}
+@media(max-width:860px){.gap-grid{grid-template-columns:1fr}}
+
+/* programme */
+.prog{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.prog-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:72px;margin-top:52px;align-items:start}
+.spec{border:1.5px solid var(--navy);background:var(--paper)}
+.spec .spec-head{background:var(--navy);color:#fff;padding:22px 26px}
+.spec .spec-head h3{font-family:var(--serif);font-size:22px;font-weight:600}
+.spec .spec-head p{color:var(--mint);font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;margin-top:4px}
+.spec table{width:100%;border-collapse:collapse}
+.spec td{padding:13px 26px;font-size:14px;border-bottom:1px solid var(--line)}
+.spec td:first-child{font-weight:700;width:42%;color:var(--ink)}
+.spec td:last-child{color:var(--grey)}
+.spec tr:last-child td{border-bottom:none}
+.spec .price td{background:var(--card)}
+.spec .price td:last-child{font-weight:800;color:var(--navy);font-size:16px}
+.week{margin-top:6px}
+.week .row{display:grid;grid-template-columns:110px 170px 1fr;gap:18px;padding:15px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.week .row:first-child{border-top:2px solid var(--ink)}
+.week .d{font-size:12.5px;font-weight:800;letter-spacing:.14em;color:var(--mint-dark)}
+.week .t{font-weight:700;font-size:15px}
+.week .x{font-size:13px;color:var(--grey)}
+@media(max-width:860px){.prog-grid{grid-template-columns:1fr}.week .row{grid-template-columns:90px 1fr;grid-template-rows:auto auto}.week .x{grid-column:2}}
+
+/* curriculum */
+.mods{margin-top:50px;border-top:2px solid var(--ink)}
+.mod{display:grid;grid-template-columns:90px 150px 1.2fr 2fr;gap:22px;padding:22px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.mod .m{font-size:26px;font-weight:800;color:var(--navy)}
+.mod.hl .m{color:var(--mint-dark)}
+.mod .w{font-size:11.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--grey)}
+.mod .n{font-weight:700;font-size:17px}
+.mod .o{font-size:14px;color:var(--grey)}
+@media(max-width:860px){.mod{grid-template-columns:70px 1fr;grid-template-rows:auto auto auto}.mod .o{grid-column:2}.mod .n{grid-column:2}}
+
+/* earned */
+.earned{background:var(--navy);color:#fff}
+.earned h2{color:#fff}
+.earned .lede{color:var(--ice)}
+.earned-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:80px;margin-top:54px;align-items:start}
+.dims{border-top:1px solid var(--line-dark)}
+.dims li{list-style:none;display:flex;justify-content:space-between;align-items:baseline;padding:13px 0;border-bottom:1px solid var(--line-dark);font-size:15px;font-weight:600}
+.dims li em{font-style:normal;font-size:10.5px;letter-spacing:.18em;color:var(--ice);font-weight:600}
+.dims li b{color:var(--mint);font-weight:800;margin-right:14px;font-size:13px}
+.tier{margin-bottom:30px}
+.tier .bar{height:46px;background:var(--navy-2);position:relative;margin:10px 0 8px}
+.tier .bar i{position:absolute;inset:0 auto 0 0;background:rgba(255,255,255,.18)}
+.tier.dist .bar i{background:var(--mint)}
+.tier .top{display:flex;justify-content:space-between;align-items:baseline}
+.tier .top b{font-size:13px;letter-spacing:.18em;text-transform:uppercase}
+.tier.dist .top b{color:var(--mint)}
+.tier .top span{font-size:26px;font-weight:800}
+.tier.dist .top span{color:var(--mint)}
+.tier p{font-size:13px;color:var(--ice)}
+.noguarantee{margin-top:34px;padding:22px 26px;border:1px solid var(--line-dark);font-size:14.5px}
+.noguarantee b{color:var(--mint)}
+@media(max-width:860px){.earned-grid{grid-template-columns:1fr}}
+
+/* proof */
+.proof .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:52px}
+.proof .step{background:#fff;border:1px solid var(--line);padding:30px 28px;position:relative}
+.proof .step::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--navy)}
+.proof .step:last-child::before{background:var(--mint)}
+.proof .wk{font-size:11.5px;font-weight:800;letter-spacing:.2em;color:var(--mint-dark);text-transform:uppercase}
+.proof .from{font-size:14px;color:var(--grey);margin:14px 0 4px}
+.proof .from s{opacity:.7}
+.proof .to{font-family:var(--serif);font-size:21px;font-weight:600;line-height:1.3}
+.proof .note{margin-top:46px;font-size:15px;color:var(--grey);font-style:italic;max-width:720px}
+.proof .note a{color:var(--mint-dark);font-weight:600}
+@media(max-width:860px){.proof .steps{grid-template-columns:1fr}}
+
+/* doors */
+.doors{background:#fff;border-top:1px solid var(--line)}
+.doors-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:52px}
+.door{border:1px solid var(--line);padding:34px 30px;display:flex;flex-direction:column;background:var(--paper)}
+.door.feature{background:var(--navy);color:#fff;border-color:var(--navy)}
+.door h3{font-family:var(--serif);font-size:24px;font-weight:600;margin:6px 0 18px}
+.door .for{font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--mint-dark)}
+.door.feature .for{color:var(--mint)}
+.door li{list-style:none;font-size:14px;padding:8px 0;border-bottom:1px solid rgba(127,127,127,.15);color:var(--grey)}
+.door.feature li{color:var(--ice)}
+.door li:last-of-type{border:none}
+.door .btn{margin-top:26px;text-align:center}
+@media(max-width:860px){.doors-grid{grid-template-columns:1fr}}
+
+/* founder */
+.founder-grid{display:grid;grid-template-columns:auto 1fr;gap:46px;align-items:start;margin-top:50px;max-width:880px}
+.avatar{width:104px;height:104px;border-radius:50%;background:var(--navy);color:var(--mint);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:30px;letter-spacing:.04em}
+.founder-grid h3{font-family:var(--serif);font-size:26px;font-weight:600}
+.founder-grid .role{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mint-dark);font-weight:700;margin:4px 0 18px}
+.founder-grid p{font-size:15.5px;color:var(--grey);max-width:640px}
+.founder-grid .facts{margin-top:18px;font-size:14px;color:var(--ink)}
+.founder-grid .facts b{font-weight:700}
+.founder-grid .facts span{color:var(--grey)}
+@media(max-width:640px){.founder-grid{grid-template-columns:1fr}}
+
+/* final cta */
+.final{background:var(--navy);color:#fff;text-align:left;position:relative;overflow:hidden}
+.final .edge{position:absolute;left:0;top:0;bottom:0;width:10px;background:var(--mint)}
+.final h2{color:#fff;font-size:clamp(36px,5vw,60px);max-width:800px}
+.final h2 em{font-style:italic;color:var(--mint)}
+.final p{color:var(--ice);font-size:17px;max-width:600px;margin-bottom:40px}
+.final .ctas{display:flex;gap:16px;flex-wrap:wrap}
+.contactline{margin-top:54px;padding-top:26px;border-top:1px solid var(--line-dark);display:flex;gap:34px;flex-wrap:wrap;font-size:14px;color:var(--ice)}
+.contactline b{color:#fff}
+.contactline .tbd{color:var(--mint);font-weight:700}
+
+/* footer */
+footer{background:var(--navy);border-top:1px solid var(--line-dark);padding:30px 0;color:var(--ice);font-size:13px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+footer em{color:var(--mint);font-style:italic;font-family:var(--serif)}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
+.rv.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap bar">
+    <a class="wordmark" href="#top">BUILD<span>AI</span></a>
+    <ul>
+      <li><a href="#programme">Programme</a></li>
+      <li><a href="#curriculum">Curriculum</a></li>
+      <li><a href="#colleges">For Colleges</a></li>
+      <li><a href="#students">For Students</a></li>
+      <li><a href="#mentors">For Mentors</a></li>
+    </ul>
+    <a class="btn btn-mint" href="#pilot">Run a pilot</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="corner"><p>EARNED,<br>NOT GRANTED.</p></div>
+  <div class="wrap">
+    <p class="kicker" style="color:var(--mint)">An apprenticeship — not a course</p>
+    <h1>We don't teach AI. We make engineers who <em>ship.</em></h1>
+    <p class="sub">A 13-week AI-native product engineering apprenticeship, run inside India's engineering colleges with mentors from working AI startups.</p>
+    <div class="ctas">
+      <a class="btn btn-mint" href="#pilot">Run a pilot at your college</a>
+      <a class="btn btn-ghost" href="#" title="Attach BuildAI_Positioning_OnePager.pdf">Download the pilot brief (PDF)</a>
+    </div>
+    <div class="statstrip">
+      <div class="s"><b>13</b><span>Weeks</span></div>
+      <div class="s"><b>8–12</b><span>Per pod, one mentor</span></div>
+      <div class="s"><b><i>0</i></b><span>Lectures</span></div>
+      <div class="s"><b>5+</b><span>Products shipped each</span></div>
+      <div class="s"><b>~10%</b><span>Earn Distinction</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="trust">
+  <div class="wrap">
+    <em>Build sprints delivered with students at</em>
+    <b>IIT Bombay</b><b>IIT Gandhinagar</b><b>IIT Madras</b><b>IISc Bangalore</b>
+  </div>
+</div>
+
+<section id="gap">
+  <div class="wrap rv">
+    <p class="kicker"><span class="n">01</span>The Gap</p>
+    <h2>Engineering curriculum ends where<br>AI-native engineering begins.</h2>
+    <div class="gap-grid">
+      <p class="big">Indian colleges produce strong theoretical foundations. AI-first startups hire for something else entirely: <strong>shipping velocity, engineering judgment, and fluency with AI-assisted workflows.</strong> That gap is structural — and closeable in 13 weeks if the apprenticeship is rigorous.</p>
+      <div class="twocol">
+        <div class="col">
+          <h4>Where curriculum ends</h4>
+          <ul>
+            <li>Limited time for shipping practice</li>
+            <li>Production deployment rarely taught</li>
+            <li>AI tooling changes every quarter</li>
+            <li>Startup workflows hard to simulate</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h4>What startups need</h4>
+          <ul>
+            <li>AI-assisted development fluency</li>
+            <li>Product &amp; architecture judgment</li>
+            <li>Evaluation discipline for AI features</li>
+            <li>Async collaboration habits</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="prog" id="programme">
+  <div class="wrap rv">
+    <p class="kicker"><span class="n">02</span>The Programme</p>
+    <h2>A 13-week apprenticeship.<br>Not a course. Not a bootcamp.</h2>
+    <p class="lede">Async on weekdays. Live with mentors on Saturdays. Peer review on Sundays. Students ship from week one — there is nothing to sit through.</p>
+    <div class="prog-grid">
+      <div class="spec">
+        <div class="spec-head">
+          <h3>BuildAI Apprenticeship</h3>
+          <p>Cohort 01 · Summer &amp; winter windows</p>
+        </div>
+        <table>
+          <tr><td>Length</td><td>13 weeks, semester-aligned</td></tr>
+          <tr><td>Format</td><td>Remote-first · async + live Saturday session</td></tr>
+          <tr><td>Commitment</td><td>15–20 hours per week</td></tr>
+          <tr><td>Pod</td><td>8–12 students · 1 working-engineer mentor</td></tr>
+          <tr><td>Output</td><td>5+ deployed products, public portfolio</td></tr>
+          <tr><td>Selection</td><td>Top 20–30% of applicants per college</td></tr>
+          <tr class="price"><td>Student fee</td><td>₹20,000 – ₹25,000</td></tr>
+        </table>
+      </div>
+      <div class="week">
+        <div class="row"><span class="d">MON</span><span class="t">Sprint Kickoff</span><span class="x">Week plan posted async. Work committed in Linear.</span></div>
+        <div class="row"><span class="d">TUE–THU</span><span class="t">Build Days</span><span class="x">AI-assisted implementation. PRs opened. Peer code reviews.</span></div>
+        <div class="row"><span class="d">FRI</span><span class="t">Demo Day</span><span class="x">A recorded demo from every student. Public archive.</span></div>
+        <div class="row"><span class="d">SAT</span><span class="t">Live Mentor Session</span><span class="x">90 minutes — architecture review, debugging, Q&amp;A.</span></div>
+        <div class="row"><span class="d">SUN</span><span class="t">Peer Review</span><span class="x">Cross-pod portfolio reviews. Reading group reflections.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="curriculum">
+  <div class="wrap rv">
+    <p class="kicker"><span class="n">03</span>Curriculum</p>
+    <h2>Six modules, organised around<br>capabilities startups hire for.</h2>
+    <div class="mods">
+      <div class="mod"><span class="m">M0</span><span class="w">Week 1</span><span class="n">AI-Native Operating System</span><span class="o">Cursor, Claude Code, context engineering. Ship one app by Friday of week one.</span></div>
+      <div class="mod"><span class="m">M1</span><span class="w">Weeks 2–4</span><span class="n">Product Engineering</span><span class="o">Next.js, Postgres, auth, deploys, monitoring. Two live apps with real users.</span></div>
+      <div class="mod hl"><span class="m">M2</span><span class="w">Weeks 5–7</span><span class="n">AI Product Patterns</span><span class="o">LLM APIs, RAG, agents. One real AI-powered product in production.</span></div>
+      <div class="mod"><span class="m">M3</span><span class="w">Week 8</span><span class="n">Evaluation &amp; Reliability</span><span class="o">Eval-driven development. A regression suite that actually catches failures.</span></div>
+      <div class="mod"><span class="m">M4</span><span class="w">Weeks 9–10</span><span class="n">Shipping in a Startup</span><span class="o">Teams of 3–4. Linear, PRs, sprint rituals, production code review.</span></div>
+      <div class="mod hl"><span class="m">M5</span><span class="w">Weeks 11–13</span><span class="n">Capstone</span><span class="o">Public launch with real users — reviewed by an external AI-startup engineer.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="earned">
+  <div class="wrap rv">
+    <p class="kicker" style="color:var(--mint)"><span class="n" style="color:var(--ice)">04</span>Evaluation &amp; Certification</p>
+    <h2>Earned, not granted.</h2>
+    <p class="lede">Seven dimensions. Two internal reviewers. External validation by working startup engineers at week 13.</p>
+    <div class="earned-grid">
+      <ul class="dims">
+        <li><span><b>01</b>Shipping velocity</span><em>SCORED 1–5</em></li>
+        <li><span><b>02</b>Engineering judgment</span><em>SCORED 1–5</em></li>
+        <li><span><b>03</b>Product thinking</span><em>SCORED 1–5</em></li>
+        <li><span><b>04</b>AI fluency</span><em>SCORED 1–5</em></li>
+        <li><span><b>05</b>Collaboration</span><em>SCORED 1–5</em></li>
+        <li><span><b>06</b>Debugging</span><em>SCORED 1–5</em></li>
+        <li><span><b>07</b>Communication</span><em>SCORED 1–5</em></li>
+      </ul>
+      <div>
+        <div class="tier">
+          <div class="top"><b>Participated</b><span>~70%</span></div>
+          <div class="bar"><i style="width:70%"></i></div>
+          <p>Finished the programme, completed all assignments.</p>
+        </div>
+        <div class="tier">
+          <div class="top"><b>Apprentice Certified</b><span>~20%</span></div>
+          <div class="bar"><i style="width:20%"></i></div>
+          <p>All seven rubric dimensions scored 3 or higher.</p>
+        </div>
+        <div class="tier dist">
+          <div class="top"><b>Distinction</b><span>~10%</span></div>
+          <div class="bar"><i style="width:10%"></i></div>
+          <p>Externally validated. Fast-tracked to startup placement.</p>
+        </div>
+        <div class="noguarantee"><b>No job guarantee — by design.</b> The certificate keeps its value precisely because it cannot be bought. Scarcity is what creates startup trust.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="proof">
+  <div class="wrap rv">
+    <p class="kicker"><span class="n">05</span>Proof Over Promises</p>
+    <h2>Every claim ends in an artifact<br>you can open in a browser.</h2>
+    <div class="steps">
+      <div class="step">
+        <p class="wk">Week 1</p>
+        <p class="from"><s>Never deployed anything</s> →</p>
+        <p class="to">One live app, public repo, recorded demo.</p>
+      </div>
+      <div class="step">
+        <p class="wk">Week 7</p>
+        <p class="from"><s>Used AI only as a chatbot</s> →</p>
+        <p class="to">A real AI product calling LLM APIs in production.</p>
+      </div>
+      <div class="step">
+        <p class="wk">Week 13</p>
+        <p class="from"><s>Resume with no evidence</s> →</p>
+        <p class="to">Public launch, reviewed by a startup engineer.</p>
+      </div>
+    </div>
+    <p class="note">Demo Day recordings, GitHub repositories, and live product URLs are archived publicly for every cohort — assets your placement cell can put in front of any recruiter. <a href="#" title="Link the Demo Day archive once cohort 1 ships">Browse the archive →</a></p>
+  </div>
+</section>
+
+<section class="doors" id="colleges">
+  <div class="wrap rv">
+    <p class="kicker"><span class="n">06</span>Three Ways In</p>
+    <h2>One programme. Three doors.</h2>
+    <div class="doors-grid">
+      <div class="door feature">
+        <p class="for">For Colleges</p>
+        <h3>Partner on a pilot.</h3>
+        <ul>
+          <li>Credible AI programme for NAAC, AICTE &amp; admissions</li>
+          <li>₹5,000–₹7,000 administrative margin per student</li>
+          <li>Zero faculty burden — BuildAI runs delivery end-to-end</li>
+          <li>Start small: weekend sprints from ₹3,000/student</li>
+        </ul>
+        <a class="btn btn-mint" href="#pilot">Talk to the founder</a>
+      </div>
+      <div class="door" id="students">
+        <p class="for">For Students</p>
+        <h3>Earn your way in.</h3>
+        <ul>
+          <li>Top 20–30% of each college admitted</li>
+          <li>15–20 hrs/week — alongside your semester</li>
+          <li>Ship 5+ real products with mentor code review</li>
+          <li>Distinction → startup placement fast-track</li>
+        </ul>
+        <a class="btn btn-navy" href="#pilot">Ask your TPO about BuildAI</a>
+      </div>
+      <div class="door" id="mentors">
+        <p class="for">For Mentors</p>
+        <h3>Join the bench.</h3>
+        <ul>
+          <li>Working engineers from AI-first startups</li>
+          <li>4–6 hrs/week per pod · paid weekly</li>
+          <li>Async PR review + one live Saturday session</li>
+          <li>First look at the strongest builders for hiring</li>
+        </ul>
+        <a class="btn btn-navy" href="#pilot">Request the mentor one-pager</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="founder">
+  <div class="wrap rv">
+    <p class="kicker"><span class="n">07</span>Founder</p>
+    <h2>Built by a founder who has lived this gap.</h2>
+    <div class="founder-grid">
+      <div class="avatar">SA</div>
+      <div>
+        <h3>Sharad Agrawal</h3>
+        <p class="role">Founder, BuildAI</p>
+        <p>Working at an AI-native company in the US, I see what AI-first startups actually hire for. The gap between that profile and what Indian colleges produce is structural, not cosmetic — and closeable in 13 weeks if the apprenticeship is rigorous.</p>
+        <p class="facts">
+          <b>IIT Bombay</b> <span>Masters, 2018</span> &nbsp;·&nbsp;
+          <b>Cornell Johnson</b> <span>MBA, 2024</span> &nbsp;·&nbsp;
+          <b>Currently</b> <span>Founder of an AI-native company in the US</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="pilot">
+  <div class="edge"></div>
+  <div class="wrap rv">
+    <h2>Let's run a pilot <em>together.</em></h2>
+    <p>Even a 30-student first cohort produces public proof your institution can show — portfolios, demo videos, and live products with your college's name on them.</p>
+    <div class="ctas">
+      <a class="btn btn-mint" href="mailto:[contact-email-TBD]" title="Replace with final email once domain is decided">Email the founder</a>
+      <a class="btn btn-ghost" href="#" title="Replace with wa.me link">WhatsApp us</a>
+      <a class="btn btn-ghost" href="#" title="Attach BuildAI_Positioning_OnePager.pdf">Download the pilot brief</a>
+    </div>
+    <div class="contactline">
+      <span><b>Sharad Agrawal</b> · Founder, BuildAI</span>
+      <span>Email: <span class="tbd">[ contact email — TBD ]</span></span>
+      <span>WhatsApp: <span class="tbd">[ number — TBD ]</span></span>
+      <span>IIT Bombay '18 · Cornell MBA '24</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 BuildAI. All rights reserved.</span>
+    <span><em>Earned, not granted.</em></span>
+  </div>
+</footer>
+
+<script>
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+}), { threshold: 0.12 });
+document.querySelectorAll('.rv').forEach(el => io.observe(el));
+</script>
+</body>
+</html>

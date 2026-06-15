@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuildAI — V6 Spec Sheet · Technical specification of an engineer who ships.</title>
+<style>
+:root{--red:#E03110;--yellow:#FFD400;--ink:#161512;--paper:#EFECE3;--cell:#F8F6EF;--mut:#757162;--hair:#161512}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;background:var(--paper);color:var(--ink);font-size:15.5px;line-height:1.5}
+::selection{background:var(--yellow)}
+.w{max-width:1220px;margin:0 auto;padding:0 24px}
+a{color:inherit}
+.mono{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.lbl{font-size:9.5px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:var(--mut)}
+.btn{display:inline-block;padding:13px 24px;font-weight:900;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none;border:2px solid var(--ink);transition:.12s}
+.btn.fill{background:var(--ink);color:var(--yellow)}
+.btn.fill:hover{background:var(--red);border-color:var(--red);color:#fff}
+.btn:hover{background:var(--yellow)}
+/* spec frame */
+.sheet{border:2px solid var(--hair);margin:26px auto;max-width:1220px;background:var(--cell)}
+.titleblock{display:grid;grid-template-columns:1.6fr 1fr 1fr;border-bottom:2px solid var(--hair)}
+.titleblock>div{padding:18px 22px;border-right:2px solid var(--hair)}
+.titleblock>div:last-child{border-right:none}
+.titleblock h1{font-size:clamp(26px,3.4vw,40px);font-weight:900;letter-spacing:-.02em;line-height:1;text-transform:uppercase}
+.titleblock h1 b{color:var(--red)}
+.titleblock .meta p{font-size:12px;font-weight:700;margin-top:3px}
+.titleblock .rev{background:var(--yellow)}
+.titleblock .rev p{font-size:12px;font-weight:800;margin-top:3px}
+/* nav strip */
+.navstrip{display:flex;border-bottom:2px solid var(--hair);background:var(--cell);position:sticky;top:0;z-index:30}
+.navstrip a{flex:1;text-align:center;padding:12px 8px;font-size:10px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;border-right:2px solid var(--hair)}
+.navstrip a:last-child{border-right:none;background:var(--red);color:#fff}
+.navstrip a:hover{background:var(--yellow);color:var(--ink)}
+@media(max-width:800px){.navstrip{flex-wrap:wrap}.navstrip a{flex:1 1 33%;border-bottom:1px solid var(--hair)}}
+/* drawing area: hero */
+.fig{border-bottom:2px solid var(--hair);position:relative}
+.fig .figlabel{position:absolute;top:14px;left:18px}
+.fig .fignum{position:absolute;top:14px;right:18px;font-size:9.5px;font-weight:800;letter-spacing:.2em;color:var(--mut)}
+.hero{padding:90px 40px 70px;text-align:left;position:relative;overflow:hidden}
+.hero h2{font-size:clamp(46px,8vw,108px);font-weight:900;letter-spacing:-.04em;line-height:.9;text-transform:uppercase}
+.hero h2 .dim{color:var(--mut);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:6px}
+.hero h2 .red{color:var(--red)}
+.hero .callout{position:absolute;right:44px;bottom:64px;width:230px;border:2px solid var(--hair);background:var(--yellow);padding:14px 16px;font-size:12px;font-weight:700;transform:rotate(2deg)}
+.hero .callout b{display:block;font-size:10px;letter-spacing:.2em;color:var(--red);margin-bottom:5px}
+.hero p.sub{margin:30px 0 30px;font-size:17px;max-width:560px;color:#494539}
+.hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
+@media(max-width:900px){.hero .callout{display:none}}
+/* dimension row */
+.dimrow{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:2px solid var(--hair)}
+.dimrow .c{padding:20px;border-right:2px solid var(--hair);position:relative}
+.dimrow .c:last-child{border-right:none}
+.dimrow b{display:block;font-size:36px;font-weight:900;letter-spacing:-.02em}
+.dimrow .c:nth-child(3) b{color:var(--red)}
+.dimrow .c:nth-child(5) b{color:var(--red)}
+.dimrow span{font-size:9.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)}
+@media(max-width:860px){.dimrow{grid-template-columns:repeat(2,1fr)}}
+/* generic section inside sheet */
+.blk{border-bottom:2px solid var(--hair);padding:64px 40px}
+.blk .head{display:flex;align-items:baseline;gap:18px;margin-bottom:30px}
+.blk .head .no{font-size:13px;font-weight:900;color:#fff;background:var(--red);padding:5px 10px;letter-spacing:.1em}
+.blk h3{font-size:clamp(26px,3.4vw,42px);font-weight:900;letter-spacing:-.025em;text-transform:uppercase;line-height:1}
+.blk .note{font-size:14px;color:var(--mut);max-width:560px;margin-top:10px}
+/* goal annotation grid */
+.anno{display:grid;grid-template-columns:1fr 1fr;border:2px solid var(--hair)}
+.anno>div{padding:28px;border-right:2px solid var(--hair)}
+.anno>div:last-child{border-right:none}
+.anno .spec-t{font-size:clamp(19px,2vw,24px);font-weight:800;line-height:1.4}
+.anno .spec-t mark{background:var(--yellow);padding:0 4px}
+.anno .spec-t .r{color:var(--red)}
+.anno table{width:100%;border-collapse:collapse;font-size:13px}
+.anno td{padding:10px 4px;border-bottom:1px solid #D8D4C6}
+.anno tr:last-child td{border:none}
+.anno td:first-child{font-weight:900;font-size:10px;letter-spacing:.14em;text-transform:uppercase;width:84px}
+.anno td:first-child i{font-style:normal;background:var(--red);color:#fff;padding:3px 7px}
+.anno tr.is td:first-child i{background:var(--ink);color:var(--yellow)}
+@media(max-width:860px){.anno{grid-template-columns:1fr}}
+/* schedule spec */
+.schem{border:2px solid var(--hair)}
+.schem .r{display:grid;grid-template-columns:120px 200px 1fr 60px;border-bottom:2px solid var(--hair)}
+.schem .r:last-child{border-bottom:none}
+.schem .r>*{padding:14px 18px;display:flex;align-items:center}
+.schem .d{background:var(--ink);color:var(--yellow);font-weight:900;font-size:12px;letter-spacing:.12em}
+.schem .t{font-weight:800;border-right:2px solid var(--hair);font-size:15px}
+.schem .x{color:var(--mut);font-size:13px}
+.schem .chk{justify-content:center;font-weight:900;color:var(--red);border-left:2px solid var(--hair)}
+@media(max-width:780px){.schem .r{grid-template-columns:90px 1fr 50px}.schem .x{display:none}}
+/* modules: blueprint cells */
+.bp{display:grid;grid-template-columns:repeat(3,1fr);border:2px solid var(--hair)}
+.bp .cell{border-right:2px solid var(--hair);border-bottom:2px solid var(--hair);padding:24px 22px;position:relative;min-height:170px;background:var(--cell)}
+.bp .cell:nth-child(3n){border-right:none}
+.bp .cell:nth-child(n+4){border-bottom:none}
+.bp .cell:hover{background:#fff}
+.bp .id{display:flex;justify-content:space-between;align-items:baseline}
+.bp .id b{font-size:28px;font-weight:900}
+.bp .cell.hl .id b{color:var(--red)}
+.bp .id span{font-size:9.5px;font-weight:800;letter-spacing:.18em;color:var(--mut);text-transform:uppercase}
+.bp h4{font-size:16px;font-weight:900;text-transform:uppercase;margin:12px 0 6px;letter-spacing:-.01em}
+.bp p{font-size:12.5px;color:var(--mut)}
+.bp .corner{position:absolute;bottom:10px;right:12px;font-size:9px;font-weight:800;letter-spacing:.16em;color:#B9B4A2}
+@media(max-width:860px){.bp{grid-template-columns:1fr}.bp .cell{border-right:none}}
+/* tolerance chart = cert */
+.tol{display:grid;grid-template-columns:1fr 1fr;gap:0;border:2px solid var(--hair)}
+.tol .left{padding:28px;border-right:2px solid var(--hair)}
+.tol .right{padding:28px;background:var(--ink);color:var(--paper)}
+.tol .left li{list-style:none;display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #D8D4C6;font-size:13.5px;font-weight:700}
+.tol .left li em{font-style:normal;font-size:9.5px;letter-spacing:.16em;color:var(--mut)}
+.tol .left li b{color:var(--red);margin-right:10px;font-size:11px}
+.tol .trow{margin-bottom:20px}
+.tol .trow .tt{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;margin-bottom:6px}
+.tol .trow .tt b{font-size:22px;letter-spacing:0}
+.tol .trow .bar{height:26px;background:#27261F}
+.tol .trow .bar i{display:block;height:100%;background:#54524A}
+.tol .trow.t2 .bar i{background:var(--yellow)}
+.tol .trow.t3 .bar i{background:var(--red)}
+.tol .stampline{margin-top:24px;border:2px dashed var(--yellow);color:var(--yellow);text-align:center;font-weight:900;font-size:12px;letter-spacing:.2em;text-transform:uppercase;padding:12px}
+@media(max-width:860px){.tol{grid-template-columns:1fr}.tol .left{border-right:none;border-bottom:2px solid var(--hair)}}
+/* BOM = ladder + econ */
+.bom{width:100%;border-collapse:collapse;border:2px solid var(--hair);font-size:14px;background:var(--cell)}
+.bom th{background:var(--ink);color:var(--yellow);text-align:left;padding:12px 18px;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+.bom td{padding:15px 18px;border-bottom:1px solid #D8D4C6;vertical-align:top}
+.bom tr:last-child td{border:none}
+.bom .it{font-weight:900;font-size:15px}
+.bom .it small{display:block;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-top:2px}
+.bom .qty{color:var(--mut);font-size:13px}
+.bom .pr{font-weight:900;white-space:nowrap;text-align:right}
+.bom tr.feat{background:var(--yellow)}
+.econline{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;font-size:14.5px;font-weight:800;align-items:baseline}
+.econline em{font-style:normal;color:var(--red)}
+.econline span{color:var(--mut);font-weight:600;font-size:13px}
+/* cta */
+.ctablk{padding:90px 40px;background:var(--red);color:#fff}
+.ctablk h3{font-size:clamp(38px,6.4vw,84px);font-weight:900;text-transform:uppercase;letter-spacing:-.03em;line-height:.94}
+.ctablk h3 span{color:var(--yellow)}
+.ctablk p{color:#FFDCD2;max-width:540px;margin:18px 0 34px;font-size:16px}
+.ctablk .row{display:flex;gap:14px;flex-wrap:wrap}
+.ctablk .btn{border-color:#fff;color:#fff}
+.ctablk .btn:hover{background:#fff;color:var(--red)}
+.ctablk .btn.fill{background:var(--yellow);border-color:var(--yellow);color:var(--ink)}
+.ctablk .btn.fill:hover{background:#fff;border-color:#fff;color:var(--red)}
+.ctablk .meta{margin-top:46px;padding-top:20px;border-top:1px solid rgba(255,255,255,.35);display:flex;gap:28px;flex-wrap:wrap;font-size:12.5px;color:#FFC9BC}
+.ctablk .meta b{color:#fff}
+.ctablk .meta .tbd{color:var(--yellow);font-weight:900}
+/* footer */
+.sigblock{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:2px solid var(--hair)}
+.sigblock div{padding:16px 22px;border-right:2px solid var(--hair);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)}
+.sigblock div:last-child{border-right:none;text-align:right}
+.sigblock b{color:var(--ink)}
+.sigblock i{color:var(--red);font-style:normal}
+@media(max-width:700px){.sigblock{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="titleblock">
+    <div><h1>BUILD<b>AI</b> — ENGINEERING SPEC №01</h1></div>
+    <div class="meta"><span class="lbl">Document</span><p>13-Week AI-Native Apprenticeship</p><span class="lbl">Status</span><p class="mono">COHORT 01 — ENROLLING</p></div>
+    <div class="rev"><span class="lbl" style="color:var(--ink)">Tolerance</span><p>EARNED, NOT GRANTED</p><span class="lbl" style="color:var(--ink)">Region</span><p>INDIA · TIER-2 COLLEGES</p></div>
+  </div>
+  <div class="navstrip">
+    <a href="#fig1">Spec</a><a href="#s1">Goal</a><a href="#s2">Programme</a><a href="#s3">Modules</a><a href="#s4">Certification</a><a href="#s5">Pricing</a><a href="#pilot">Run a Pilot</a>
+  </div>
+
+  <div class="fig" id="fig1">
+    <span class="figlabel lbl">FIG. 1 — THE CLAIM</span><span class="fignum mono">SCALE 1:1</span>
+    <div class="hero">
+      <h2>We don't <span class="dim">teach AI.</span><br>We make engineers<br>who <span class="red">ship.</span></h2>
+      <div class="callout"><b>FIELD NOTE</b>Build sprints already delivered with students at IIT Bombay, IIT Gandhinagar, IIT Madras &amp; IISc Bangalore.</div>
+      <p class="sub">Technical specification of a 13-week AI-native product engineering apprenticeship — run inside the college, mentored by working engineers from AI startups, graded the way startups grade.</p>
+      <div class="ctas"><a class="btn fill" href="#pilot">Run a pilot</a><a class="btn" href="#s1">Read the spec ↓</a></div>
+    </div>
+  </div>
+
+  <div class="dimrow">
+    <div class="c"><b>13</b><span>Weeks · semester-aligned</span></div>
+    <div class="c"><b>8–12</b><span>Per pod · 1 mentor</span></div>
+    <div class="c"><b>0</b><span>Lectures permitted</span></div>
+    <div class="c"><b>5+</b><span>Products shipped / student</span></div>
+    <div class="c"><b>~10%</b><span>Distinction tolerance</span></div>
+  </div>
+
+  <div class="blk" id="s1">
+    <div class="head"><span class="no">§1</span><h3>Design Intent — The Goal</h3></div>
+    <div class="anno">
+      <div><p class="spec-t">Colleges produce theory. AI-first startups hire <mark>shipping velocity, engineering judgment and AI-tool fluency.</mark> This apprenticeship closes that gap in 13 weeks — <span class="r">with deployed products as the only acceptable proof.</span></p></div>
+      <div>
+        <table>
+          <tr><td><i>NOT</i></td><td>An AI course — students build; nobody watches videos</td></tr>
+          <tr><td><i>NOT</i></td><td>A bootcamp — runs alongside the semester, no career break</td></tr>
+          <tr><td><i>NOT</i></td><td>A certificate mill — ~30% certify, by design</td></tr>
+          <tr class="is"><td><i>IS</i></td><td>An apprenticeship reviewed weekly by working AI-startup engineers</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="blk" id="s2">
+    <div class="head"><span class="no">§2</span><h3>Operating Cycle — One Week</h3></div>
+    <p class="note" style="margin:-16px 0 26px">Async weekdays · live Saturday session · Sunday peer review · 15–20 hrs/week. Repeat × 13.</p>
+    <div class="schem">
+      <div class="r"><span class="d">MON</span><span class="t">Sprint Kickoff</span><span class="x">Week plan posted async — work committed in Linear.</span><span class="chk">✓</span></div>
+      <div class="r"><span class="d">TUE–THU</span><span class="t">Build Days</span><span class="x">AI-assisted implementation — PRs opened, peer-reviewed.</span><span class="chk">✓</span></div>
+      <div class="r"><span class="d">FRI</span><span class="t">Demo Day</span><span class="x">Recorded demo from every student — public archive.</span><span class="chk">✓</span></div>
+      <div class="r"><span class="d">SAT</span><span class="t">Live Mentor Session</span><span class="x">90 min — architecture review, debugging, Q&amp;A.</span><span class="chk">✓</span></div>
+      <div class="r"><span class="d">SUN</span><span class="t">Peer Review</span><span class="x">Cross-pod portfolio reviews — reading group.</span><span class="chk">✓</span></div>
+    </div>
+  </div>
+
+  <div class="blk" id="s3">
+    <div class="head"><span class="no">§3</span><h3>Assembly — Six Modules</h3></div>
+    <div class="bp">
+      <div class="cell"><div class="id"><b>M0</b><span>Week 1</span></div><h4>AI-Native OS</h4><p>Cursor, Claude Code, context engineering. Ship one app by Friday.</p><span class="corner">REF 01</span></div>
+      <div class="cell"><div class="id"><b>M1</b><span>Wk 2–4</span></div><h4>Product Engineering</h4><p>Next.js, Postgres, auth, deploys. Two live apps with real users.</p><span class="corner">REF 02</span></div>
+      <div class="cell hl"><div class="id"><b>M2</b><span>Wk 5–7</span></div><h4>AI Product Patterns</h4><p>LLM APIs, RAG, agents. One real AI product in production.</p><span class="corner">REF 03</span></div>
+      <div class="cell"><div class="id"><b>M3</b><span>Week 8</span></div><h4>Eval &amp; Reliability</h4><p>Eval-driven development. Regression suites that catch failures.</p><span class="corner">REF 04</span></div>
+      <div class="cell"><div class="id"><b>M4</b><span>Wk 9–10</span></div><h4>Shipping in a Startup</h4><p>Teams of 3–4. Linear, PRs, sprint rituals, code review.</p><span class="corner">REF 05</span></div>
+      <div class="cell hl"><div class="id"><b>M5</b><span>Wk 11–13</span></div><h4>Capstone</h4><p>Public launch, real users — external startup-engineer review.</p><span class="corner">REF 06</span></div>
+    </div>
+  </div>
+
+  <div class="blk" id="s4">
+    <div class="head"><span class="no">§4</span><h3>Quality Control — Certification</h3></div>
+    <div class="tol">
+      <div class="left">
+        <p class="lbl" style="margin-bottom:12px">Inspection criteria — scored 1–5 × two reviewers</p>
+        <ul>
+          <li><span><b>01</b>Shipping velocity</span><em>1–5</em></li>
+          <li><span><b>02</b>Engineering judgment</span><em>1–5</em></li>
+          <li><span><b>03</b>Product thinking</span><em>1–5</em></li>
+          <li><span><b>04</b>AI fluency</span><em>1–5</em></li>
+          <li><span><b>05</b>Collaboration</span><em>1–5</em></li>
+          <li><span><b>06</b>Debugging</span><em>1–5</em></li>
+          <li><span><b>07</b>Communication</span><em>1–5</em></li>
+        </ul>
+      </div>
+      <div class="right">
+        <p class="lbl" style="color:#8F8B7E;margin-bottom:16px">Pass distribution — by design</p>
+        <div class="trow"><div class="tt"><span>Participated</span><b>~70%</b></div><div class="bar"><i style="width:70%"></i></div></div>
+        <div class="trow t2"><div class="tt"><span>Apprentice Certified</span><b>~20%</b></div><div class="bar"><i style="width:20%"></i></div></div>
+        <div class="trow t3"><div class="tt"><span>Distinction</span><b>~10%</b></div><div class="bar"><i style="width:10%"></i></div></div>
+        <div class="stampline">No job guarantee — by design</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="blk" id="s5">
+    <div class="head"><span class="no">§5</span><h3>Bill of Materials — Ways to Start</h3></div>
+    <table class="bom">
+      <tr><th>Item</th><th>Specification</th><th style="text-align:right">Unit price</th></tr>
+      <tr><td class="it">Weekend Sprint<small>Step 01 · 1 weekend · ~15 hrs</small></td><td class="qty">One deployed app per student · pods of 8–12 · one working-engineer mentor · tier-graded certificate</td><td class="pr">₹3–5K / student</td></tr>
+      <tr><td class="it">2-Weekend Sprint<small>Step 02 · ~12 days · ~30 hrs</small></td><td class="qty">Two deployed apps — one with a live LLM API call · prompt iteration · token economics · API safety</td><td class="pr">₹8–9K / student</td></tr>
+      <tr class="feat"><td class="it">13-Week Apprenticeship<small>Step 03 · 15–20 hrs / week</small></td><td class="qty">5+ products in a public portfolio · external startup-engineer review · Distinction → placement pipeline</td><td class="pr">₹20–25K / student</td></tr>
+    </table>
+    <div class="econline">College keeps ₹5–7K / student <span>(administrative margin)</span> <em>→ ≈ ₹6 lakh per 100-student cohort</em> <span>· zero faculty burden · NAAC / AICTE-citable industry tie-up</span></div>
+  </div>
+
+  <div class="ctablk" id="pilot">
+    <p class="lbl" style="color:var(--yellow)">§6 — Approval &amp; Sign-off</p>
+    <h3>Let's run a pilot <span>together.</span></h3>
+    <p>Even a 30-student first cohort produces public proof your institution can show — portfolios, demo videos, live products.</p>
+    <div class="row">
+      <a class="btn fill" href="mailto:[contact-email-TBD]">Email the founder</a>
+      <a class="btn" href="#" title="Replace with wa.me link">WhatsApp</a>
+      <a class="btn" href="#" title="Attach one-pager">Pilot brief (PDF)</a>
+    </div>
+    <div class="meta">
+      <span><b>Sharad Agrawal</b> — Founder, BuildAI</span><span>IIT Bombay '18 · Cornell MBA '24</span>
+      <span>EMAIL: <span class="tbd">[ TBD ]</span></span><span>WHATSAPP: <span class="tbd">[ TBD ]</span></span>
+    </div>
+  </div>
+
+  <div class="sigblock">
+    <div>DRAWN BY <b>BUILDAI</b></div>
+    <div>TOLERANCE <i>EARNED, NOT GRANTED</i></div>
+    <div>SHEET <b>V6 — SPEC</b> · © 2026</div>
+  </div>
+</div>
+</body>
+</html>

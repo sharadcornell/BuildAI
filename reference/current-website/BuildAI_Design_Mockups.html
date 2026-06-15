@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BuildAI — Three Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,500&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&family=Caveat:wght@400;500;600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #2a2a2a;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #ddd;
+    padding: 48px 24px;
+  }
+  .page-header {
+    max-width: 1280px;
+    margin: 0 auto 32px;
+    color: #f0f0f0;
+  }
+  .page-header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .page-header p {
+    color: #999;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .option-label {
+    max-width: 1280px;
+    margin: 56px auto 16px;
+    padding-left: 4px;
+    color: #f0f0f0;
+  }
+  .option-label .tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: #999;
+    margin-bottom: 6px;
+  }
+  .option-label h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+  .option-label p {
+    color: #aaa;
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 900px;
+  }
+
+  /* The slide canvas — 16:9 at 1280×720 */
+  .slide {
+    width: 1280px;
+    height: 720px;
+    max-width: 100%;
+    aspect-ratio: 16/9;
+    margin: 0 auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ===== OPTION A: EDITORIAL / PRINT ===== */
+  .slide-editorial {
+    background: #F2EBDA;
+    color: #1A1612;
+    font-family: 'IBM Plex Sans', sans-serif;
+    padding: 64px 88px;
+    display: flex;
+    flex-direction: column;
+  }
+  .slide-editorial .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1.5px solid #1A1612;
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+  }
+  .slide-editorial .masthead .mast-left {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-style: italic;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+  .slide-editorial .masthead .mast-right {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #8B2A2A;
+  }
+  .slide-editorial .kicker {
+    font-family: 'IBM Plex Sans Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #8B2A2A;
+    margin-top: 18px;
+    margin-bottom: 14px;
+  }
+  .slide-editorial h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 72px;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    margin-bottom: 22px;
+    max-width: 1000px;
+  }
+  .slide-editorial h1 em {
+    font-style: italic;
+    font-weight: 400;
+  }
+  .slide-editorial .standfirst {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1.35;
+    color: #443c33;
+    max-width: 880px;
+    margin-bottom: auto;
+  }
+  .slide-editorial .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid #1A1612;
+    padding-top: 22px;
+    margin-top: 32px;
+  }
+  .slide-editorial .stat {
+    padding: 0 24px;
+    border-right: 1px solid #1A1612;
+  }
+  .slide-editorial .stat:first-child { padding-left: 0; }
+  .slide-editorial .stat:last-child { border-right: none; padding-right: 0; }
+  .slide-editorial .stat .num {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 90px;
+    line-height: 0.95;
+    color: #1A1612;
+    letter-spacing: -0.04em;
+  }
+  .slide-editorial .stat .lbl {
+    font-family: 'IBM Plex Sans Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-top: 8px;
+    margin-bottom: 6px;
+  }
+  .slide-editorial .stat .desc {
+    font-size: 13px;
+    line-height: 1.45;
+    color: #4a4238;
+  }
+  .slide-editorial .pagemark {
+    position: absolute;
+    bottom: 26px;
+    right: 88px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #8a7d6a;
+  }
+
+  /* ===== OPTION B: FOUNDER MEMO / PURE TYPE ===== */
+  .slide-memo {
+    background: #FAF7EF;
+    color: #171614;
+    font-family: 'Source Serif 4', 'Fraunces', serif;
+    padding: 88px 120px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .slide-memo .section-mark {
+    position: absolute;
+    top: 88px;
+    left: 64px;
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: #999084;
+    transform: rotate(-90deg) translateX(-60px);
+    transform-origin: left top;
+    letter-spacing: 0.05em;
+  }
+  .slide-memo .top-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Source Serif 4', serif;
+    font-size: 13px;
+    color: #75695b;
+    margin-bottom: 80px;
+    font-style: italic;
+  }
+  .slide-memo .top-meta .right { color: #C04D1C; font-style: normal; letter-spacing: 0.04em; font-size: 12px; }
+  .slide-memo h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    margin-bottom: 28px;
+    max-width: 980px;
+  }
+  .slide-memo h1 em {
+    font-style: italic;
+  }
+  .slide-memo .lede {
+    font-family: 'Source Serif 4', serif;
+    font-size: 19px;
+    line-height: 1.55;
+    color: #3a342c;
+    max-width: 720px;
+    margin-bottom: 64px;
+  }
+  .slide-memo .typo-stats {
+    font-family: 'Source Serif 4', serif;
+    font-size: 38px;
+    line-height: 1.35;
+    color: #171614;
+    letter-spacing: -0.005em;
+    max-width: 1000px;
+  }
+  .slide-memo .typo-stats .num {
+    font-weight: 600;
+    font-size: 54px;
+    letter-spacing: -0.02em;
+  }
+  .slide-memo .typo-stats .accent {
+    color: #C04D1C;
+  }
+  .slide-memo .typo-stats .small {
+    font-size: 18px;
+    font-style: italic;
+    color: #75695b;
+    display: block;
+    margin-top: 14px;
+    line-height: 1.5;
+  }
+  .slide-memo .footer-meta {
+    position: absolute;
+    bottom: 48px;
+    left: 120px;
+    right: 120px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: #999084;
+  }
+
+  /* ===== OPTION C: STUDIO SKETCHBOOK ===== */
+  .slide-sketch {
+    background:
+      radial-gradient(circle at 18% 92%, rgba(120,60,30,0.05) 0, transparent 14%),
+      radial-gradient(circle at 88% 12%, rgba(120,60,30,0.04) 0, transparent 12%),
+      #ECE3CD;
+    color: #2A2520;
+    font-family: 'IBM Plex Sans', sans-serif;
+    padding: 72px 96px;
+    position: relative;
+    overflow: hidden;
+  }
+  .slide-sketch::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(80,50,20,0.04) 1px, transparent 1.5px),
+      radial-gradient(circle at 70% 75%, rgba(80,50,20,0.03) 1px, transparent 1.5px),
+      radial-gradient(circle at 40% 80%, rgba(80,50,20,0.04) 1px, transparent 1.5px);
+    background-size: 240px 240px, 320px 320px, 180px 180px;
+    pointer-events: none;
+  }
+  .slide-sketch::after {
+    /* faint coffee ring */
+    content: "";
+    position: absolute;
+    bottom: 60px;
+    left: 110px;
+    width: 130px;
+    height: 130px;
+    border: 6px solid rgba(110, 60, 30, 0.10);
+    border-radius: 50%;
+    transform: rotate(-12deg) scale(1, 0.45);
+    pointer-events: none;
+  }
+  .slide-sketch .nbcontent {
+    position: relative;
+    z-index: 1;
+  }
+  .slide-sketch .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 32px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(42,37,32,0.25);
+  }
+  .slide-sketch .notebook-id {
+    font-family: 'Caveat', cursive;
+    font-size: 26px;
+    color: #3A5A3A;
+    transform: rotate(-1.5deg);
+  }
+  .slide-sketch .date {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 18px;
+    color: #5a4d3d;
+    letter-spacing: 0.02em;
+  }
+  .slide-sketch .typed-title-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #6e5e48;
+    margin-bottom: 12px;
+  }
+  .slide-sketch h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 56px;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin-bottom: 18px;
+    max-width: 920px;
+  }
+  .slide-sketch .typed-body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 400;
+    font-size: 17px;
+    line-height: 1.5;
+    color: #443930;
+    max-width: 700px;
+    margin-bottom: 56px;
+  }
+  .slide-sketch .stat-row {
+    display: flex;
+    gap: 110px;
+    align-items: flex-end;
+    padding-left: 8px;
+  }
+  .slide-sketch .stat-block {
+    position: relative;
+  }
+  .slide-sketch .stat-block .scribble-num {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 110px;
+    line-height: 1;
+    color: #2A2520;
+    display: block;
+  }
+  .slide-sketch .stat-block:nth-child(1) .scribble-num { transform: rotate(-2deg); }
+  .slide-sketch .stat-block:nth-child(2) .scribble-num { transform: rotate(1deg); color: #3A5A3A; }
+  .slide-sketch .stat-block:nth-child(3) .scribble-num { transform: rotate(-1deg); color: #A04030; }
+  .slide-sketch .stat-block .underline {
+    height: 4px;
+    width: 70%;
+    background: rgba(42,37,32,0.55);
+    border-radius: 4px;
+    margin-top: 4px;
+    margin-bottom: 10px;
+    transform: skewY(-1deg);
+  }
+  .slide-sketch .stat-block:nth-child(2) .underline { background: rgba(58,90,58,0.55); }
+  .slide-sketch .stat-block:nth-child(3) .underline { background: rgba(160,64,48,0.55); }
+  .slide-sketch .stat-block .typed-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #2A2520;
+    margin-bottom: 6px;
+  }
+  .slide-sketch .stat-block .typed-desc {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #5a4d3d;
+    max-width: 200px;
+  }
+  .slide-sketch .marginalia-1 {
+    position: absolute;
+    top: 188px;
+    right: 80px;
+    font-family: 'Caveat', cursive;
+    font-size: 24px;
+    color: #A04030;
+    transform: rotate(4deg);
+    max-width: 220px;
+    line-height: 1.2;
+    z-index: 2;
+  }
+  .slide-sketch .marginalia-arrow {
+    position: absolute;
+    top: 220px;
+    right: 310px;
+    font-family: 'Caveat', cursive;
+    font-size: 28px;
+    color: #A04030;
+    transform: rotate(-12deg);
+  }
+  .slide-sketch .signature {
+    position: absolute;
+    bottom: 38px;
+    right: 96px;
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    color: #3A5A3A;
+    transform: rotate(-3deg);
+    z-index: 2;
+  }
+  .slide-sketch .pagenum {
+    position: absolute;
+    bottom: 38px;
+    left: 96px;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 16px;
+    color: #6e5e48;
+    z-index: 2;
+  }
+
+  @media (max-width: 1380px) {
+    .slide { transform-origin: top left; transform: scale(0.85); margin-bottom: -108px; }
+    .option-label, .page-header { max-width: 1090px; }
+  }
+  @media (max-width: 1100px) {
+    .slide { transform: scale(0.7); margin-bottom: -216px; }
+    .option-label, .page-header { max-width: 900px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>BuildAI — three design directions</h1>
+  <p>Same content, three aesthetics. The slide content is the "Introducing BuildAI" stats slide from the current deck. Pick whichever feels right and I'll redo all 14 slides in that direction.</p>
+</div>
+
+<!-- ===== OPTION A: EDITORIAL / PRINT ===== -->
+<div class="option-label">
+  <div class="tag">OPTION A</div>
+  <h2>Editorial / print</h2>
+  <p>Cream paper, ink black, oxblood accent. Newspaper-style masthead, hairline rules instead of cards, stats set in a display serif as if they were headline figures in a print feature. Reads as sophisticated and considered.</p>
+</div>
+
+<div class="slide slide-editorial">
+  <div class="masthead">
+    <div class="mast-left">BuildAI</div>
+    <div class="mast-right">No. 04 &nbsp;·&nbsp; The Program</div>
+  </div>
+  <div class="kicker">Introducing BuildAI</div>
+  <h1>A 13-week AI-native product engineering <em>apprenticeship.</em></h1>
+  <div class="standfirst">Built for engineering students. Integrated with engineering colleges.</div>
+  <div class="stats">
+    <div class="stat">
+      <div class="num">13</div>
+      <div class="lbl">Weeks</div>
+      <div class="desc">Aligned with internship and intensive program windows.</div>
+    </div>
+    <div class="stat">
+      <div class="num">100</div>
+      <div class="lbl">Students per cohort</div>
+      <div class="desc">Organised into pods of 8&ndash;12, each led by a working AI engineer.</div>
+    </div>
+    <div class="stat">
+      <div class="num">0</div>
+      <div class="lbl">Lectures</div>
+      <div class="desc">Students learn by shipping, not by sitting through slides.</div>
+    </div>
+  </div>
+  <div class="pagemark">— 4 of 14 —</div>
+</div>
+
+<!-- ===== OPTION B: FOUNDER MEMO / PURE TYPE ===== -->
+<div class="option-label">
+  <div class="tag">OPTION B</div>
+  <h2>Founder memo / pure type</h2>
+  <p>Off-white, ink black, a single restrained burnt-orange accent used once. No icons, no cards, no boxes — every page is typography. Reads like Stripe Press or a serious essay. The most distinctive option; also the riskiest if the reader expects "deck."</p>
+</div>
+
+<div class="slide slide-memo">
+  <div class="section-mark">§4 · the program</div>
+  <div class="top-meta">
+    <div>BuildAI · founder memo · v0.4</div>
+    <div class="right">— FOR REVIEW —</div>
+  </div>
+  <h1>We're building a <em>13-week apprenticeship,</em> not a course.</h1>
+  <div class="lede">It runs inside engineering colleges. Students don't sit through lectures — they ship real products under the eye of working AI engineers. That's the whole idea.</div>
+  <div class="typo-stats">
+    <span class="num">13</span> weeks. &nbsp; <span class="num">100</span> students per cohort. &nbsp; <span class="num accent">0</span> lectures.
+    <span class="small">Cohorts run on engineering-college calendars — summer and winter intensives, mapped to internship windows.</span>
+  </div>
+  <div class="footer-meta">
+    <div>04 / 14</div>
+    <div>contact@meetskybloom.com</div>
+  </div>
+</div>
+
+<!-- ===== OPTION C: STUDIO SKETCHBOOK ===== -->
+<div class="option-label">
+  <div class="tag">OPTION C</div>
+  <h2>Studio sketchbook</h2>
+  <p>Cream paper with faint grain, typed body mixed with hand-written annotations, accent in forest green and rust. Numbers scribbled, not typeset. Margin notes, a signed founder line at the bottom. Most personality. Needs real artifacts (screenshots, code) to fully work across 14 slides.</p>
+</div>
+
+<div class="slide slide-sketch">
+  <div class="nbcontent">
+    <div class="top-row">
+      <div class="notebook-id">BuildAI notebook — entry 04</div>
+      <div class="date">Wed · May 2026</div>
+    </div>
+    <div class="typed-title-eyebrow">The Program</div>
+    <h1>A 13-week apprenticeship. Not a course.</h1>
+    <div class="typed-body">Engineering students working alongside working engineers from AI startups. Built for shipping, not for sitting through slides.</div>
+    <div class="stat-row">
+      <div class="stat-block">
+        <span class="scribble-num">13</span>
+        <div class="underline"></div>
+        <div class="typed-label">weeks</div>
+        <div class="typed-desc">aligned with summer + winter intensive windows</div>
+      </div>
+      <div class="stat-block">
+        <span class="scribble-num">100</span>
+        <div class="underline"></div>
+        <div class="typed-label">students</div>
+        <div class="typed-desc">organised into pods of 8&ndash;12 with a working AI engineer leading each</div>
+      </div>
+      <div class="stat-block">
+        <span class="scribble-num">0</span>
+        <div class="underline"></div>
+        <div class="typed-label">lectures</div>
+        <div class="typed-desc">no slides, no lectures — students ship from week one</div>
+      </div>
+    </div>
+  </div>
+  <div class="marginalia-1">this is<br>the entire<br>point ↓</div>
+  <div class="signature">— S.A.</div>
+  <div class="pagenum">page 4 / 14</div>
+</div>
+
+</body>
+</html>

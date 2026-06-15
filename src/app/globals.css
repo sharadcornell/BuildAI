@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-red: #e4321b;
+  --brand-ink: #111111;
+  --brand-yellow: #ffd400;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-brand-red font-sans text-brand-paper antialiased;
+  }
+  ::selection {
+    @apply bg-brand-yellow text-brand-ink;
+  }
+  a {
+    @apply transition-colors;
+  }
+}
+
+@layer components {
+  .display {
+    @apply font-display uppercase leading-[0.88] tracking-tight;
+  }
+  .eyebrow {
+    @apply font-sans text-xs font-bold uppercase tracking-[0.2em] text-brand-yellow;
+  }
+  .card-offset {
+    @apply border-2 border-brand-ink bg-brand-ink text-brand-paper shadow-offset;
+  }
+  /* "Looks 3D, built 2D" — GPU-cheap perspective tilt */
+  .tilt {
+    transform-style: preserve-3d;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    will-change: transform;
+  }
+  .tilt:hover {
+    transform: perspective(900px) rotateX(4deg) rotateY(-6deg) translateZ(10px);
+  }
+  .stroke-text {
+    color: transparent;
+    -webkit-text-stroke: 2px #ffffff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  .tilt:hover {
+    transform: none;
+  }
+}
