@@ -784,3 +784,154 @@ All four pages serve their form; `/contact` reuses the pilot-inquiry flow. Clien
 
 ✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed or printed; no secret values appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). The only DB writes were 4 marked test rows, all deleted. All Git work remains local on branch `main`.
 
+---
+
+# Part 7 — Phase 2A Auth and role protection (2026-06-15)
+
+Implemented **Supabase Auth (email + password) + role-based access** for the `/app` area. **Scope: auth + roles only** — no LiteLLM, Langfuse, AI key issuance, payments, Turnstile, OAuth/magic-link, lead-management UI, or production-domain work (all explicitly out of this phase). Phase 1 public pages + lead forms were left functional and untouched. **No `git push`, no remote, no deploy, no secrets printed, `.env.local` never committed.**
+
+> ⚠️ **One manual operator step before auth works end-to-end:** run the new migration `supabase/migrations/0002_auth_roles.sql` in the Supabase SQL Editor, then create + role test users. Exact steps in [§4](#4-migration--did-it-run) and [§12](#12-manual-testing-result). The CLI is not linked, so SQL is **not** run from here.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean (working tree)
+node -v ; npm -v                             # v22.12.0 / 10.9.0
+npm install                                  # up to date (401 pkgs); non-blocking EBADENGINE only
+npm run build                                # exit 0 (baseline, before changes)
+npm run lint                                 # exit 0 (baseline)
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# env presence verified by NAME ONLY (6 vars, all present); values never printed
+# ...code changes...
+npm run build                                # exit 0 (26 → 26 routes; /app* now dynamic ƒ, + Middleware ƒ)
+npm run lint                                 # exit 0, no warnings/errors
+npm run dev                                  # route + redirect + form-regression checks (Node fetch; curl absent)
+```
+
+Env vars confirmed present **by name only** (no values printed): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `LEAD_NOTIFICATION_TO`. `.env.local` is git-ignored and was never read/printed/committed.
+
+## 2. Files changed
+
+| File | New? | Change |
+|---|---|---|
+| `supabase/migrations/0002_auth_roles.sql` | ✅ new | Additive auth migration (trigger + backfill + index + admin-bootstrap docs). See §3. |
+| `src/lib/supabase/server-auth.ts` | ✅ new | `@supabase/ssr` **cookie-bound** server client (runs as the logged-in user, RLS applies). Returns `null` when public env is unset so the app still renders. Separate from the existing service-role admin client in `server.ts` (not a duplicate — different purpose). |
+| `src/lib/auth.ts` | ✅ new | `getSessionUser()` (React-`cache`d), `requireUser()`, `requireRole()`, `dashboardPathForRole()`, `Role` type. Role lookup = `profiles.role` by `user_id`; missing profile defaults to least-privileged `student` (never elevates). |
+| `src/lib/auth-actions.ts` | ✅ new | `"use server"` `signOut()` server action → `supabase.auth.signOut()` + redirect to `/login`. |
+| `src/middleware.ts` | ✅ new | Matches `/app/:path*` only. Refreshes the Supabase session cookie and redirects logged-out visitors to `/login`. No-ops if env unset. Public routes never matched. |
+| `src/components/auth/LoginForm.tsx` | ✅ new | Client login form: email/password, `signInWithPassword`, loading state, generic error messages, role-based redirect. |
+| `src/app/login/page.tsx` | edited | Server page (keeps `metadata`) now renders `<LoginForm />` instead of the disabled placeholder. |
+| `src/app/app/layout.tsx` | ✅ new | Authenticated shell wrapping all `/app` routes: `requireUser()` gate + header showing **email, role badge, Log out** button. |
+| `src/app/app/page.tsx` | edited | `requireRole(["student","admin"])` + "Student dashboard coming next". |
+| `src/app/app/mentor/page.tsx` | edited | `requireRole(["mentor","admin"])` + "Mentor dashboard coming next". |
+| `src/app/app/admin/page.tsx` | edited | `requireRole(["admin"])` + "Admin dashboard coming next". |
+| `docs/HANDOFF.md` | edited | This Part 7. |
+
+**Not changed:** the 3 form API routes, `validation.ts`, `email.ts`, the existing `client.ts` (browser) / `server.ts` (service-role admin) helpers, `0001_init.sql`, any marketing page/copy/component, `.gitignore`, `.env.local`.
+
+## 3. Migration added
+
+`supabase/migrations/0002_auth_roles.sql` — **additive and non-destructive** (idempotent: guarded `create or replace`, `if not exists`, `on conflict do nothing`). It does **not** edit `0001_init.sql`. `0001` already created the `profiles` table, the `user_role` enum (`student`/`mentor`/`admin`), profiles RLS, and the `is_admin()`/`is_self()`/`mentors_student()` helpers — so `0002` only adds:
+
+1. **`public.handle_new_user()` trigger** on `auth.users` (AFTER INSERT) — auto-creates exactly one `profiles` row per new auth user, `role = 'student'` (least privileged). `SECURITY DEFINER`, so it bypasses RLS and needs no public INSERT policy (profiles INSERT stays admin-only).
+2. **One-time backfill** — inserts a `student` profile for any existing `auth.users` without one. Existing profiles/roles untouched.
+3. **`profiles_role_idx`** index on `profiles(role)`.
+4. **Admin-bootstrap instructions** (as SQL comments) — no code hardcodes any email; no public/self-serve admin path.
+
+## 4. Migration — did it run?
+
+🔴 **Not run from here** (Supabase CLI is not linked; per the rules I do not run SQL against the live DB). **Run it manually, once:**
+
+1. Supabase Dashboard → your project → **SQL Editor → New query**.
+2. Paste the entire contents of **`supabase/migrations/0002_auth_roles.sql`** → **Run**. (Safe/idempotent on the already-migrated project.)
+3. Verify the trigger exists:
+   ```sql
+   select tgname from pg_trigger where tgname = 'on_auth_user_created';
+   ```
+
+Until this runs, new sign-ups won't get an auto-profile and role redirects fall back to the `student` view.
+
+## 5. Auth flow implemented
+
+- **Sign in:** `/login` → `LoginForm` (client) calls `supabase.auth.signInWithPassword`. On success it reads the user's `profiles.role` and `router.replace`s to the matching dashboard (`/app`, `/app/mentor`, `/app/admin`), then `router.refresh()`. Falls back to `/app` (server guards still route correctly).
+- **Session:** `@supabase/ssr` cookie sessions; `src/middleware.ts` refreshes the session cookie on `/app/*` requests.
+- **Sign out:** **Log out** button in the `/app` shell posts the `signOut()` server action → `auth.signOut()` → redirect `/login`.
+- **Errors:** generic, user-safe (`"Incorrect email or password."`, `"Something went wrong. Please try again."`) — no raw auth internals or stack traces.
+- **Loading state:** inputs + button disabled during submit; button reads "Signing in…".
+- **Not added (by design):** OAuth/Google, magic link (kept email+password only to keep the flow simple, per the brief).
+
+## 6. Roles implemented
+
+`student` · `mentor` · `admin` (existing `user_role` enum). Role is stored in `profiles.role` and read server-side via `getSessionUser()`. New users default to `student`; elevation to `mentor`/`admin` is a deliberate manual SQL update (§4 bootstrap). No email is hardcoded anywhere; there is **no** public admin signup.
+
+## 7. Protected route behavior
+
+Two layers (defense in depth): **middleware** (logged-in/out gate on `/app/*`) + **per-page `requireRole`** (role authorization). Wrong-role access **redirects to the user's own dashboard** — no wrong-role data is ever rendered.
+
+| Route | Logged out | `student` | `mentor` | `admin` |
+|---|---|---|---|---|
+| `/app` | → `/login` | ✅ view | → `/app/mentor` | ✅ view |
+| `/app/mentor` | → `/login` | → `/app` | ✅ view | ✅ view |
+| `/app/admin` | → `/login` | → `/app` | → `/app/mentor` | ✅ view |
+
+All **13 public marketing routes stay public** (verified 200, see §12): `/`, `/programme`, `/curriculum`, `/certification`, `/for-colleges`, `/for-students`, `/for-mentors`, `/placements`, `/partners`, `/about`, `/contact`, `/privacy`, `/terms` (+ `/login`). Middleware matcher is `/app/:path*` only, so public routes are never touched.
+
+## 8. Dashboard shell behavior
+
+`/app/layout.tsx` wraps all three dashboards with the authenticated shell: **user email**, a **role badge**, and a **Log out** button. Each page renders its role-appropriate "… dashboard coming next" placeholder. No lead-management or live data UI (that's Phase 2D / 3).
+
+## 9. Phase 1 form regression result
+
+✅ **No regression.** The 3 form API routes were not modified; live checks on the dev server:
+
+| Route | Honeypot (valid + `hp`) | Invalid | Wrong method (GET) |
+|---|---|---|---|
+| `/api/pilot-inquiry` | **200 `{ok:true}`** (DB insert skipped) | 400 | 405 |
+| `/api/student-waitlist` | **200 `{ok:true}`** | 400 | 405 |
+| `/api/mentor-application` | **200 `{ok:true}`** | 400 | 405 |
+
+All honeypot submits used the honeypot path, so **no rows were written** (no valid non-honeypot submits were sent — zero test leads created). Identical behavior to Parts 4–6.
+
+## 10. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes. `/app`, `/app/mentor`, `/app/admin` are now **dynamic (`ƒ`)**; all marketing routes stay **static (`○`)**; `/login` static; **Middleware (`ƒ`)** registered. No type errors.
+
+⚠️ **Non-blocking build warning:** `@supabase/supabase-js` triggers an Edge-Runtime advisory (`process.version` "not supported in the Edge Runtime") via the middleware import. Build still exits 0 and middleware works; this is a known Supabase+Next advisory, not an error. Can be silenced later by pinning the middleware to the Node runtime if desired.
+
+## 11. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors." (Same non-blocking `next lint` deprecation notice as Parts 1–6.)
+
+## 12. Manual testing result
+
+**Verified live (logged-out, on the dev server, via Node `fetch` — `curl` is not installed in this shell):**
+
+- `/login` → **200**.
+- `/app`, `/app/mentor`, `/app/admin` (logged out) → **307 → `/login`** (all three).
+- All 13 public routes → **200**.
+- Form-API regression (§9) → as expected.
+
+**Requires the operator (cannot be done from here — needs the migration + Supabase Dashboard user creation):**
+
+1. Run `0002_auth_roles.sql` (§4).
+2. Supabase Dashboard → **Authentication → Users → Add user** — create three (email + password): a student, a mentor, an admin. The trigger gives each a `student` profile automatically.
+3. Promote two of them in the **SQL Editor** (substitute the emails you created — do **not** commit real emails):
+   ```sql
+   update public.profiles set role = 'admin'
+     where user_id = (select id from auth.users where email = 'ADMIN_EMAIL');
+   update public.profiles set role = 'mentor'
+     where user_id = (select id from auth.users where email = 'MENTOR_EMAIL');
+   ```
+4. Then verify role behavior in a browser against the table in §7 (student can't reach mentor/admin; mentor can't reach admin; admin reaches all three; log out returns to `/login`). The role logic is implemented and unit-evident in `src/lib/auth.ts`; only live user accounts (operator step) remain to exercise it end-to-end.
+
+## 13. Remaining issues
+
+- 🔴 **Run `0002_auth_roles.sql`** (§4) + create/role the three test users (§12) — the only steps left to exercise role-gated access end-to-end.
+- 🟡 **Edge-Runtime advisory** on the Supabase import in middleware (§10) — non-blocking; optionally pin middleware to the Node runtime.
+- 🟡 **Final real-browser pass** for the login → dashboard → logout click-through (no headless browser here; server behavior verified by HTTP).
+- ⚪ **Deferred by design (out of this phase):** OAuth/magic-link; LiteLLM/Langfuse/AI-key issuance; payments; Turnstile + rate limiting; lead-management UI (Phase 2D); DPDP `/privacy` + `/terms` before query logging; production domain. Unchanged Phase-1 items from Parts 1–6 still stand.
+
+## 14. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed, read, or printed; no secret values, emails, or keys appear in this doc, terminal output, or any commit. No SQL was run against the live database from here, and no test leads were created (only honeypot-path submits, which write nothing). All Git work remains local on branch `main`.
+
