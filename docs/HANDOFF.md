@@ -453,3 +453,94 @@ All three routes: ✅ server-side zod validation · ✅ honeypot guard intact ·
 
 ✅ **No `git push`. No remote added. No deploy. No Vercel/GitHub connection.** ✅ `.env.local` never committed, never printed; no secret values appear anywhere in this doc, the terminal output, or the commit. All Git work remains local on branch `main`.
 
+---
+
+# Part 4 — Supabase migration applied and lead capture verified (2026-06-15)
+
+The Part-3 blocker is cleared. `supabase/migrations/0001_init.sql` was **run manually in the Supabase Dashboard SQL Editor**, and all three Phase-1 lead-capture forms now write rows end-to-end. **Scope: re-test only — no auth, dashboards, LiteLLM, Langfuse, payments, role routing, Resend, or Turnstile touched. No code changes were needed.** No `git push`, no remote, no deploy, no secrets printed.
+
+## 1. Commands run
+
+```bash
+git status                                   # clean
+node -v ; npm -v                             # v22.12.0 / 10.9.0
+npm install                                  # up to date (401 pkgs); non-blocking EBADENGINE warning only
+npm run build                                # exit 0, 26 routes
+npm run lint                                 # exit 0, no warnings/errors
+git check-ignore -v .env.local               # .gitignore:11:.env*.local → IGNORED
+# Env-var presence verified by NAME ONLY (grep "^VAR=" + non-empty); values never printed
+npm run dev                                  # forms exercised via curl against localhost:3000
+# Supabase read/verify via PostgREST (service-role creds read into shell vars, never echoed):
+#   - table-exists probe + exact row counts (Prefer: count=exact)
+#   - read-back of created rows by marker
+#   - DELETE of the 4 test rows after verification (cleanup)
+```
+
+## 2. Migration applied
+
+✅ **Confirmed.** `supabase/migrations/0001_init.sql` was applied manually by the operator in the Supabase Dashboard → SQL Editor. A read-only PostgREST probe (which returned `404 PGRST205` in Part 3) now returns **HTTP 200** for all three lead tables — the schema exists. *(The migration was not run from here; this part only verifies the result.)*
+
+## 3. Tables verified
+
+All three lead-capture tables exist and accept writes. Each started **empty (0 rows)**, giving an exact before/after count:
+
+| Table | Exists | Inserted column mapping correct? |
+|---|---|---|
+| `pilot_inquiries` | ✅ 200 | ✅ `college`, `role`, `email`, `phone`, `city`, `students_estimate`, `start_term`, `message` |
+| `student_waitlist` | ✅ 200 | ✅ `full_name`, `year`, `branch`, `email`, `phone`, `portfolio`, `reason` |
+| `mentor_applications` | ✅ 200 | ✅ `full_name`, `company`, `role`, `years_exp`, `hours_per_week`, `email`, `linkedin`, `github`, `areas`, `note` |
+
+## 4. API behavior matrix (live, post-migration)
+
+| Case | `/api/pilot-inquiry` | `/api/student-waitlist` | `/api/mentor-application` | Row created? |
+|---|---|---|---|---|
+| **Valid payload** | **200 `{ok:true}`** | **200 `{ok:true}`** | **200 `{ok:true}`** | ✅ yes — row written & read back |
+| **Filled honeypot** (valid fields + `hp`) | 200 `{ok:true}` | 200 `{ok:true}` | 200 `{ok:true}` | ❌ no — silently dropped before DB |
+| **Invalid payload** | 400 `Invalid submission.` | 400 | 400 | ❌ no |
+| **Malformed JSON** | 400 `Invalid submission.` | 400 | 400 | ❌ no |
+| **Wrong method (GET)** | 405 | 405 | 405 | ❌ no |
+
+The **valid → 500** state from Part 3 (missing table) is **gone** — valid submissions now return **200** and persist. Error handling is unchanged from Part 3 (generic `"Something went wrong. Please try again."` to the client; detail logged server-side) — **no Supabase internals leak to the user** (§ below).
+
+## 5. Browser form test result
+
+- The four form pages serve **HTTP 200** and each renders one honeypot field; page→form→endpoint wiring confirmed in source (`/for-colleges`→pilot, `/for-students`→student, `/for-mentors`→mentor, **`/contact`→pilot**).
+- Submissions were exercised against the live endpoints via `curl` (the forms POST JSON to these exact routes) rather than a headless browser — none is available in this environment. Client-side zod validation in the form components mirrors the server schema. **Recommended final manual pass:** submit each form once in a real browser and confirm a clean DevTools console (brief §12).
+- Dev-server log during the run was clean: no errors, no unhandled rejections, no stack traces. The only lines were the intended `[email] Resend not configured — skipping …` (one per valid submit) — confirming the success path ran and email no-ops gracefully (Resend intentionally not configured, out of scope).
+
+## 6. Supabase row creation result
+
+✅ **Verified by read-back.** After submitting valid payloads (tagged `verify-p4` for traceability), exact counts were:
+
+| Table | Before | After valid submits | Read-back |
+|---|---|---|---|
+| `pilot_inquiries` | 0 | **2** | `VERIFY-P4 Colleges` (role TPO) + `VERIFY-P4 Contact` (role Other) — **both `/for-colleges` and `/contact` landed; `/contact` reuses the pilot-inquiry flow ✓** |
+| `student_waitlist` | 0 | **1** | `VERIFY-P4 Student` (year 3, branch CS) |
+| `mentor_applications` | 0 | **1** | `VERIFY-P4 Mentor` (company `VERIFY-P4 Co`, 5 hrs/wk) |
+
+- **Honeypot wrote nothing:** a query for the honeypot's marker returned `[]`, and the exact totals (2/1/1) prove the honeypot, invalid, and malformed attempts created **zero** rows.
+- **Cleanup:** all **4** test rows were deleted afterward (`DELETE … email ilike %verify-p4%`); all three tables are back to **0 rows**. No test data left in the project.
+
+## 7. Build result
+
+✅ `npm run build` → **exit 0**, 26 routes (3 API routes dynamic `ƒ`). No type errors.
+
+## 8. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors." (Non-blocking `next lint` deprecation notice only.)
+
+## 9. Remaining issues
+
+- 🟡 **Resend not configured** (`RESEND_API_KEY` / `LEAD_NOTIFICATION_TO` unset) — lead-notification emails are skipped (logged, graceful). DB capture is fully working; set these when you want email alerts. *(Out of scope here.)*
+- 🟡 **Final real-browser pass** still recommended to formally close the "no console errors" DoD item (brief §12).
+- ⚪ **Deferred (unchanged, out of scope):** Cloudflare Turnstile + rate limiting (brief §4); DPDP-compliant `/privacy` + `/terms` before Phase-2 query logging (brief §13); 2 moderate `npm audit` advisories; local root-owned `~/.npm` cache (machine-only; does not affect Vercel).
+- ✅ **No new issues found.** Lead capture works end-to-end; no code changes were required in this part.
+
+## 10. Ready for Vercel preview deployment?
+
+**Yes — and lead capture now persists rows.** Clean `build` + `lint`; all three forms validate, save to Supabase, and return safe errors; honeypot drops spam; `/contact` reuses pilot inquiry. The deploy itself was intentionally **not** performed. To deploy when you choose: push to GitHub → import to Vercel → set the same Supabase env vars (and Resend, for email) in Production + Preview.
+
+## 11. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy.** ✅ `.env.local` never committed or printed; no secret values appear in this doc, terminal output, or any commit. The only Supabase writes were 4 clearly-marked test rows, all deleted afterward. All Git work remains local on branch `main`.
+
