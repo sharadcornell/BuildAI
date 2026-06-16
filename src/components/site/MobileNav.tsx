@@ -51,6 +51,15 @@ export function MobileNav() {
                 </Link>
               </li>
             ))}
+            <li className="border-t border-brand-ink/15">
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="block py-4 font-sans text-sm font-bold uppercase tracking-wide text-brand-red hover:text-brand-ink"
+              >
+                Login
+              </Link>
+            </li>
           </ul>
         </nav>
       ) : null}

@@ -2003,3 +2003,58 @@ npm run dev                                     # headers + routes + dashboards 
 ## 17. Git / deploy safety confirmation
 
 ✅ **No `git push`. No remote added. No deploy. No live LLM calls.** ✅ `.env.local` never committed/read-aloud/printed; no secret values appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No raw/provider keys generated, stored, or printed. Live DB writes were limited to clearly-tagged `verify-p16` test rows — **all deleted (0 residual)**. All Git work remains local on branch `main`.
+
+---
+
+# Part 17 — Login visibility and GitHub push (2026-06-15)
+
+Made the existing `/login` reachable from the public UI (it had no link anywhere), then pushed the local repo to the operator's GitHub repository. **No deploy. No new features. No secrets exposed.**
+
+## 1. What caused Login/Dashboard to not be visible
+
+The routes were all present and working — `/login`, `/app`, `/app/mentor`, `/app/admin` all exist and respond correctly. The problem was purely **navigation**: there was **no link to `/login` anywhere in the public UI** (not in the desktop header `Nav.tsx`, the `MobileNav.tsx` menu, or the `Footer`). A logged-out visitor could only reach the login page by typing the URL. No "Dashboard" link exists by design — the public header is a static Server Component and can't detect auth; after login the existing role routing sends each user to the right dashboard.
+
+## 2. Was code changed?
+
+Yes — minimal: a "Login" link added to the desktop header and the mobile menu. No auth, dashboard, route, migration, or AI code touched.
+
+## 3. Files changed
+
+| File | Change |
+|---|---|
+| `src/components/site/Nav.tsx` | Added a desktop "Login" text link → `/login` (styled like the nav links, `md:inline`), placed before the "Run a Pilot" CTA. |
+| `src/components/site/MobileNav.tsx` | Added a "Login" item → `/login` at the bottom of the mobile menu list (accent color), closes the menu on click. |
+| `docs/HANDOFF.md` | This Part 17. |
+
+No "Dashboard" link was added (public header can't detect auth); logged-out dashboard access still safely redirects to `/login`.
+
+## 4. Route checks
+
+- `/login` → **200**; `/`, `/contact`, `/privacy`, `/terms` → **200**.
+- Logged-out `/app`, `/app/mentor`, `/app/admin` → **307 → /login** (unchanged).
+- Desktop homepage HTML now contains exactly one `href="/login"` ("Login" link); mobile menu renders a Login item on open (client component).
+- Real-session smoke test: student `/app`, mentor `/app/mentor`, admin `/app/admin` → all **200** (Nav change didn't regress dashboards). Logout unchanged (verified live in Part 8; logged-out matrix confirms `/login` landing).
+
+## 5. Build result
+
+✅ `npm run build` → **exit 0**.
+
+## 6. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 7. Secret safety checks
+
+✅ `.env.local` git-ignored (`.gitignore:11`) and **not tracked** (`git ls-files .env.local` → empty). ✅ Only tracked env file is `.env.example` (placeholder names, no values). ✅ Secret-pattern grep over the repo (excl. HANDOFF) matched **only empty variable names** in `.env.example` and the brief doc (`SUPABASE_SERVICE_ROLE_KEY=`, `RESEND_API_KEY=`, etc. with no values) — no real secrets. ✅ `.env.local` never printed.
+
+## 8. Remote URL used
+
+`https://github.com/sharadcornell/BuildAI.git` (added as `origin`; no other remote).
+
+## 9. Push result
+
+See the push confirmation appended below (branch `main`, `-u origin main`).
+
+## 10. Deploy confirmation
+
+✅ **No deploy performed.** Code was pushed to GitHub only — no Vercel import, no production deploy, no live LLM calls.
