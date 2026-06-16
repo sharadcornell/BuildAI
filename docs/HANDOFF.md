@@ -2053,9 +2053,17 @@ No "Dashboard" link was added (public header can't detect auth); logged-out dash
 
 ## 9. Push result
 
-🔴 **BLOCKED on write permission — push NOT completed.**
+✅ **PUSHED SUCCESSFULLY** to `https://github.com/sharadcornell/BuildAI.git` (branch `main`).
 
-Two retries, two stages of diagnosis:
+Final state: `local main == origin/main == ebce7ea`; 149 files on the remote; `.env.local` confirmed **absent** from the remote (only `.env.example` is tracked). The push went through once the operator added `sharad-iykyk` as a **Write collaborator**.
+
+One reconciliation step was needed: the GitHub repo had been created with an auto-init **"Initial commit"** containing a one-line `README.md`, so the histories were unrelated and the first push was rejected (non-fast-forward). Resolved **non-destructively** (no force-push) by merging `origin/main` with `--allow-unrelated-histories` and keeping our full local `README.md` (merge commit `ebce7ea`). GitHub's initial commit is preserved in history.
+
+---
+
+### Earlier blocked attempts (for the record)
+
+🔴 Two retries before access was granted:
 1. While the repo was **private**, `git push` returned `Repository not found` (GitHub's 404 for a repo the authenticated account can't see).
 2. After the operator made the repo **public**, the unauthenticated API check returned **HTTP 200** (repo exists & readable), and `git push` now returns the real error:
    `remote: Permission to sharadcornell/BuildAI.git denied to sharad-iykyk. fatal: ... error: 403`.
