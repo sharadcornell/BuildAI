@@ -2053,8 +2053,27 @@ No "Dashboard" link was added (public header can't detect auth); logged-out dash
 
 ## 9. Push result
 
-See the push confirmation appended below (branch `main`, `-u origin main`).
+🔴 **BLOCKED on authentication — push NOT completed.** `git push -u origin main` failed with:
+`remote: Repository not found. fatal: repository 'https://github.com/sharadcornell/BuildAI.git/' not found`.
+
+Diagnosis (no secrets printed):
+- `https://api.github.com/repos/sharadcornell/BuildAI` → **HTTP 404** unauthenticated → the repo is **private or does not exist yet**.
+- Git uses the macOS **osxkeychain** helper; the stored `github.com` credential belongs to account id **180697449**, which **cannot access** `sharadcornell/BuildAI` (hence GitHub's 404-as-"not found"). The configured git author is `sharad-iykyk`, and the repo owner is `sharadcornell` — an account/permission mismatch.
+- `gh` CLI is **not installed**, so the correct account can't be authenticated from here.
+
+The local side is fully ready: commit `8b059c3` on branch `main`, `origin` correctly set to `https://github.com/sharadcornell/BuildAI.git`, working tree clean. **No credentials were guessed, injected, or printed.**
+
+**To finish the push (operator action), do ONE of:**
+1. Authenticate the correct account, then retry:
+   ```bash
+   brew install gh && gh auth login            # choose the sharadcornell account, HTTPS
+   git push -u origin main
+   ```
+2. Or set a Personal Access Token (repo scope) for `sharadcornell` in the keychain / credential helper, then `git push -u origin main`.
+3. Confirm the repo actually exists at `github.com/sharadcornell/BuildAI` and that the authenticating account has push access (if private).
+
+(The remote is already added correctly — no need to re-add it.)
 
 ## 10. Deploy confirmation
 
-✅ **No deploy performed.** Code was pushed to GitHub only — no Vercel import, no production deploy, no live LLM calls.
+✅ **No deploy performed.** No Vercel import, no production deploy, no live LLM calls. (Push to GitHub is pending operator authentication — see §9.)
