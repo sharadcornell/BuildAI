@@ -2053,24 +2053,21 @@ No "Dashboard" link was added (public header can't detect auth); logged-out dash
 
 ## 9. Push result
 
-🔴 **BLOCKED on authentication — push NOT completed.** `git push -u origin main` failed with:
-`remote: Repository not found. fatal: repository 'https://github.com/sharadcornell/BuildAI.git/' not found`.
+🔴 **BLOCKED on write permission — push NOT completed.**
 
-Diagnosis (no secrets printed):
-- `https://api.github.com/repos/sharadcornell/BuildAI` → **HTTP 404** unauthenticated → the repo is **private or does not exist yet**.
-- Git uses the macOS **osxkeychain** helper; the stored `github.com` credential belongs to account id **180697449**, which **cannot access** `sharadcornell/BuildAI` (hence GitHub's 404-as-"not found"). The configured git author is `sharad-iykyk`, and the repo owner is `sharadcornell` — an account/permission mismatch.
-- `gh` CLI is **not installed**, so the correct account can't be authenticated from here.
+Two retries, two stages of diagnosis:
+1. While the repo was **private**, `git push` returned `Repository not found` (GitHub's 404 for a repo the authenticated account can't see).
+2. After the operator made the repo **public**, the unauthenticated API check returned **HTTP 200** (repo exists & readable), and `git push` now returns the real error:
+   `remote: Permission to sharadcornell/BuildAI.git denied to sharad-iykyk. fatal: ... error: 403`.
 
-The local side is fully ready: commit `8b059c3` on branch `main`, `origin` correctly set to `https://github.com/sharadcornell/BuildAI.git`, working tree clean. **No credentials were guessed, injected, or printed.**
+**Root cause:** the machine authenticates (via macOS osxkeychain) as GitHub user **`sharad-iykyk`** (keychain id 180697449), but the repo is owned by **`sharadcornell`**, and `sharad-iykyk` is **not a collaborator with write access**. Public visibility allows read/clone by anyone but does **not** grant push rights. `gh` CLI is not installed, so a different account can't be authenticated from here.
+
+The local side is fully ready: commit `684e243` on branch `main`, `origin` correctly set to `https://github.com/sharadcornell/BuildAI.git`, working tree clean. **No credentials were guessed, injected, or printed; no other repo was pushed to.**
 
 **To finish the push (operator action), do ONE of:**
-1. Authenticate the correct account, then retry:
-   ```bash
-   brew install gh && gh auth login            # choose the sharadcornell account, HTTPS
-   git push -u origin main
-   ```
-2. Or set a Personal Access Token (repo scope) for `sharadcornell` in the keychain / credential helper, then `git push -u origin main`.
-3. Confirm the repo actually exists at `github.com/sharadcornell/BuildAI` and that the authenticating account has push access (if private).
+1. **Add `sharad-iykyk` as a Write collaborator** (simplest — the machine is already logged in as that account): repo → Settings → Collaborators → invite `sharad-iykyk` (Write) → accept the invite → then `git push -u origin main`.
+2. Authenticate the machine as the owner `sharadcornell`: `brew install gh && gh auth login` (HTTPS, account `sharadcornell`), then `git push -u origin main`.
+3. Host the repo under the already-authenticated account instead (`github.com/sharad-iykyk/BuildAI`) — this changes the target repo and needs explicit operator confirmation before re-pointing `origin`.
 
 (The remote is already added correctly — no need to re-add it.)
 
