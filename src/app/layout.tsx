@@ -1,51 +1,29 @@
 import type { Metadata } from "next";
-import { Anton, Inter } from "next/font/google";
-import "./globals.css";
-import { Nav } from "@/components/site/Nav";
-import { Footer } from "@/components/site/Footer";
-
-const anton = Anton({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-anton",
-  display: "swap",
-});
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
+import type { ReactNode } from "react";
+import "../styles/index.css";
+import { Navbar } from "./components/buildai/Navbar";
+import { Footer } from "./components/buildai/Footer";
+import { CohortStatusStrip } from "./components/buildai/cards";
+import { ScrollToTop } from "./components/buildai/ScrollToTop";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://buildai.global"),
-  title: {
-    default: "BuildAI — We don't teach AI. We make engineers who ship.",
-    template: "%s · BuildAI",
-  },
+  title: "User request",
   description:
-    "A 13-week AI-native product engineering apprenticeship for India's engineering colleges. Students ship real products, reviewed by working engineers from AI startups.",
-  openGraph: {
-    title: "BuildAI — We make engineers who ship.",
-    description:
-      "13-week AI-native product engineering apprenticeship, run inside India's engineering colleges.",
-    url: "https://buildai.global",
-    siteName: "BuildAI",
-    type: "website",
-  },
-  twitter: { card: "summary_large_image" },
+    "Streamline your workflow with an intuitive tool designed to enhance productivity and simplify task management for professionals and teams.",
+  robots: { index: false, follow: false },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${anton.variable} ${inter.variable}`}>
+    <html lang="en">
       <body>
-        <Nav />
-        <main>{children}</main>
-        <Footer />
+        <div className="min-h-screen flex flex-col bg-paper text-foreground">
+          <ScrollToTop />
+          <CohortStatusStrip />
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </div>
       </body>
     </html>
   );
