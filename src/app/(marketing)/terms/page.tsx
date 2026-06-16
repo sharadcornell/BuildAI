@@ -9,7 +9,8 @@ export default function TermsPage() {
       <div className="max-w-3xl">
         <h1 className="display text-4xl text-brand-ink">Terms of Service</h1>
         <p className="mt-4 text-sm text-brand-ink/70">
-          Draft placeholder — replace with reviewed terms before launch.
+          <strong>Draft — not a final legal document.</strong> This is a pre-launch placeholder and
+          requires professional legal review before public launch.
         </p>
         <div className="mt-6 space-y-4 text-brand-ink/90">
           <p>

@@ -10,8 +10,10 @@ export default function PrivacyPage() {
       <div className="prose-invert max-w-3xl">
         <h1 className="display text-4xl text-brand-ink">Privacy Policy</h1>
         <p className="mt-4 text-sm text-brand-ink/70">
-          Draft placeholder — replace with a reviewed policy before collecting data or enabling
-          query logging (India DPDP Act 2023). See docs/BuildAI_Website_Build_Brief.md §13.
+          <strong>Draft — not a final legal document.</strong> This is a pre-launch placeholder and
+          requires professional legal review before public launch, and specifically before we collect
+          personal data at scale or enable query logging (India DPDP Act 2023). See
+          docs/BuildAI_Website_Build_Brief.md §13.
         </p>
         <div className="mt-6 space-y-4 text-brand-ink/90">
           <p>

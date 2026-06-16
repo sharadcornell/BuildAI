@@ -1906,3 +1906,100 @@ npm run dev                                     # dashboards exercised via real 
 ## 19. Git / deploy / LiteLLM safety confirmation
 
 ✅ **No `git push`. No remote added. No deploy. No real LiteLLM/LLM calls** (env absent; only metadata exercised). ✅ `.env.local` never committed/read-aloud/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No raw keys generated/stored/printed. Live DB writes were limited to clearly-tagged `verify-p15` test rows + one AI access verification record — **all deleted (0 residual)**; no users created/modified. This was a docs-only change. All Git work remains local on branch `main`.
+
+---
+
+# Part 16 — Phase 4A Pre-deploy hardening and cleanup (2026-06-15)
+
+Pre-deploy hardening pass on commit `7ee8524`: honesty/legal-copy review, a deployment checklist, refreshed env docs, conservative security headers, and full regression QA. **OpenRouter/LiteLLM live work stays deferred — no real LLM calls, no live key issuance.** No `git push`, no remote, no deploy, no secrets printed.
+
+## 1. Commands run
+
+```bash
+git status ; node -v                          # clean · v22.12.0
+npm install                                    # up to date (no new deps)
+npm run build                                  # exit 0
+npm run lint                                    # exit 0 "No ESLint warnings or errors"
+git check-ignore -v .env.local                # .gitignore:11:.env*.local → IGNORED
+# env presence by NAME ONLY: Supabase/Resend/SITE_URL present; Turnstile keys present (unused);
+#   LITELLM_*/LANGFUSE_* all ABSENT
+npm run dev                                     # headers + routes + dashboards (real sessions) + forms
+# verification used @supabase/supabase-js + @supabase/ssr to replay real per-user sessions;
+#   temp scripts ran from the project dir and were deleted (never committed)
+```
+
+## 2. Files changed
+
+| File | Change |
+|---|---|
+| `next.config.mjs` | Added conservative security headers for all routes (X-Content-Type-Options, Referrer-Policy, X-Frame-Options, Permissions-Policy, HSTS without preload). **No CSP** (deferred — would risk next/font + next/og). |
+| `src/app/(marketing)/privacy/page.tsx` | Strengthened the draft banner to "**Draft — not a final legal document**" + explicit "professional legal review before public launch" (DPDP). |
+| `src/app/(marketing)/terms/page.tsx` | Same draft/legal-review banner strengthening. |
+| `.env.example` | **Rewritten** with correct/all variable NAMES (added `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `LITELLM_PROXY_BASE_URL`, `LANGFUSE_OTEL_HOST`), server-only/public annotations, AI vars marked DEFERRED, and an explicit note that `OPENROUTER_API_KEY` belongs in the LiteLLM **proxy** env, never this app/browser. |
+| `docs/DEPLOYMENT_CHECKLIST.md` | **New** — GitHub/Vercel steps, required vs deferred env vars (names only), migration status, Resend domain note, deferred features, legal gating, headers, post-deploy smoke test. |
+| `docs/HANDOFF.md` | This Part 16. |
+
+**Not changed:** any AI access logic, dashboards, auth, forms, migrations, or brand/marketing copy beyond the two legal banners. No new npm dependency.
+
+## 3. Placeholder / legal-copy review result
+
+✅ `/privacy` + `/terms` are clearly **draft, not final legal documents**, now with an explicit professional-legal-review-before-launch note (DPDP for privacy). No invented legal guarantees. ✅ No fake partner/client/college claims — `partners` page shows the honest empty state ("pilot colleges forming now"); mentor-origins wall is framed as recruiting-in-progress (previously reviewed compliant). ✅ No job-guarantee claims — all copy is explicitly "no job guarantee / does not guarantee jobs". ✅ No unrelated domains in the live site (`src/`); `meetskybloom.com` appears only in `docs/` + historical `reference/` source material, never in shipped code. ✅ AI access areas state live issuance is deferred ("Live issuance and spend sync arrive in Phase 3B"); student card shows "Not issued"; no raw/provider keys are shown anywhere.
+
+## 4. Deployment checklist result
+
+✅ `docs/DEPLOYMENT_CHECKLIST.md` created (names only, no secret values): GitHub push, Vercel import, required env vars (6) + deferred env vars, migration status (0001/0002/0004 applied & live-verified; 0003 optional; AI issuance deferred), Resend domain-verification note, deferred features (OpenRouter/LiteLLM, Google sign-in, Turnstile/rate-limit, payments), legal gating, security headers, and a post-deploy smoke test.
+
+## 5. Env documentation result
+
+✅ `.env.example` rewritten to match the live variable names and mark AI/Turnstile vars deferred/optional. `OPENROUTER_API_KEY` deliberately **omitted** with a note that it belongs in the LiteLLM proxy environment, never the Next.js app or browser. No real values.
+
+## 6. Security checks
+
+✅ `.env.local` git-ignored **and** not tracked. ✅ No secret value patterns (`sk-…`, `sk-or-v1`, JWTs) in `src/`/`docs/` (the only grep hit is prose in HANDOFF naming a variable). ✅ No `"use client"` file references `SERVICE_ROLE_KEY` / `LITELLM_MASTER_KEY` / `LANGFUSE_SECRET_KEY` / `OPENROUTER`. ✅ `.next/static` scan — none of those names present. ✅ **No `.delete()`** in any dashboard/AI server action (non-destructive; revoke/suspend/exhaust are status updates). ✅ Every admin server action (`setLeadHandled` + the 4 AI access actions) is gated by `requireRole(["admin"])`. ✅ Students/mentors cannot reach `/app/admin` (both → 307 to own dashboard) — verified live.
+
+## 7. Public route regression result
+
+✅ All 200: `/`, `/programme`, `/curriculum`, `/certification`, `/for-colleges`, `/for-students`, `/for-mentors`, `/placements`, `/partners`, `/about`, `/contact`, `/privacy`, `/terms`, `/login`, `/sitemap.xml`, `/robots.txt`, `/opengraph-image`, `/twitter-image`. Unknown route → **404**. Security headers present on responses (verified via `curl -D -`).
+
+## 8. Auth / dashboard regression result
+
+✅ Logged-out `/app`, `/app/admin`, `/app/mentor` → **307 → /login**. Real per-user sessions: student `/app` → 200, mentor `/app/mentor` → 200, admin `/app/admin` → 200. Role protection: student→/app/admin → 307→/app; mentor→/app → 307→/app/mentor; **student & mentor → /app/admin both denied (307)**. By design, admins may also view `/app` and `/app/mentor` (pages are `["student","admin"]` / `["mentor","admin"]`); only `/app/admin` is admin-only. (Logout path unchanged, verified live in Part 8.)
+
+## 9. Phase 1 form regression result
+
+✅ Pilot / student / mentor / contact **valid → 200 + Supabase row + Resend accepted** (4 message ids logged). **Honeypot → 200, no row.** **Invalid → 400, no row.** Row counts exact (pilot 2 incl. contact, student 1, mentor 1, honeypot 0).
+
+## 10. AI access scaffold regression result
+
+✅ Student card renders "**Not issued**" (no record) with no raw key in HTML. Admin AI overview renders with LiteLLM/Langfuse "**Not configured**" + the "**Phase 3B**" deferred message. Mentor dashboard shows the "AI trace review — Coming later" card. No real LLM calls (AI env absent).
+
+## 11. Test data cleanup result
+
+✅ All `verify-p16` lead rows deleted across all three tables (0 residual); honeypot created none; `student_ai_access` remained empty (0). No test users created/modified (sessions via magic-link OTP; no passwords changed). The 4 `VERIFY-P16` test emails to `LEAD_NOTIFICATION_TO` are subject-tagged and ignorable. Temp scripts deleted (never committed).
+
+## 12. Build result
+
+✅ `npm run build` → **exit 0** (headers config compiles).
+
+## 13. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 14. Remaining issues
+
+- 🟡 **Privacy/Terms legal review** required before public production launch (fine for a preview).
+- 🟡 **Resend domain verification** + `from: contact@buildai.global` before production deliverability.
+- 🟡 **CSP deferred** — conservative headers only; a strict CSP needs a careful, tested pass.
+- ⚪ **Deferred (unchanged):** OpenRouter/LiteLLM live issuance + spend sync (Phase 3B); Google sign-in; Turnstile + rate limiting (keys present, widget not wired); payments; optional `0003` migration for mentor-facing student names.
+
+## 15. Ready for GitHub/Vercel preview?
+
+✅ **Yes — preview-ready.** Clean build + lint; security headers in place; honest legal/marketing copy; deployment checklist + env docs prepared; all regressions green; secrets server-only and absent from the client bundle. The push/import/deploy themselves were intentionally **not** performed.
+
+## 16. OpenRouter / LiteLLM deferral confirmation
+
+✅ **Confirmed deferred.** No OpenRouter setup, no LiteLLM proxy requirement, no live key issuance, no real LLM calls. AI env vars remain absent and the app shows "not configured / not issued / Phase 3B" states. `OPENROUTER_API_KEY` is explicitly kept out of the app env (documented as proxy-only).
+
+## 17. Git / deploy safety confirmation
+
+✅ **No `git push`. No remote added. No deploy. No live LLM calls.** ✅ `.env.local` never committed/read-aloud/printed; no secret values appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No raw/provider keys generated, stored, or printed. Live DB writes were limited to clearly-tagged `verify-p16` test rows — **all deleted (0 residual)**. All Git work remains local on branch `main`.
