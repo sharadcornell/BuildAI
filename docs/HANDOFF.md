@@ -2235,3 +2235,175 @@ was exercised only with a missing/invalid code (→ redirect).
 ✅ **Confirmed.** `.env.local` never read/printed/committed. Only `.env.example` (placeholder names) is
 tracked. No secret values, no raw keys, no Google client secret appear in any changed file or commit.
 All work is on branch `main`; origin is exactly `https://github.com/sharadcornell/BuildAI.git`.
+
+---
+
+# Part 19 — Pre-Vercel deployment readiness check (2026-06-15)
+
+Read-only readiness pass on commit `2182429` (Phases 1–4B) before any Vercel import. **Verification only —
+no product features, no migrations, no destructive SQL, no deploy.** Google + AI flags stay OFF. **No real
+Google OAuth / OpenRouter / LiteLLM / LLM calls. No secrets printed or committed.** Result: ✅ **PASS —
+safe to import into Vercel.** No code/doc fixes were required; only this Part 19 was added.
+
+## 1. Commands run
+
+```bash
+git status ; git remote -v ; git branch --show-current ; git status -sb ; git log --oneline -20
+node -v ; npm -v ; npm install ; npm run build ; npm run lint
+git check-ignore -v .env.local ; git ls-files .env.local
+git ls-files | grep -Ei '(\.env|secret|secrets|key|keys|credential|credentials)'   # → only .env.example
+git grep -n -I -E '<secret patterns>' -- . ':!docs/HANDOFF.md'                      # → only empty NAMES
+npm run dev                                  # routes / headers / redirects / form API matrix via curl
+# .env.local var presence checked by NAME ONLY (grep "^VAR=." ; values never printed)
+# .next/static scanned for server-secret names / raw-key patterns → clean
+```
+
+## 2. Build result
+
+✅ `npm run build` → **exit 0**. All routes compile incl. dynamic `/login`, `/auth/callback`, `/app*`, and
+`ƒ Middleware`. No type errors.
+
+## 3. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors" (non-blocking `next lint` deprecation notice only).
+
+## 4. Git status
+
+✅ Working tree **clean**; branch **`main`**; `## main...origin/main` (not ahead/behind). HEAD = `2182429`
+"Add feature flags for Google auth and AI providers".
+
+## 5. Remote URL check
+
+✅ `origin` (fetch + push) is **exactly** `https://github.com/sharadcornell/BuildAI.git`.
+
+## 6. Secret safety result
+
+✅ Only tracked env file is **`.env.example`** (placeholder names). The committed secret-pattern scan matched
+**only empty/commented variable NAMES** in `.env.example` and `docs/BuildAI_Website_Build_Brief.md` (e.g.
+`SUPABASE_SERVICE_ROLE_KEY=`, `RESEND_API_KEY=`) — **no real values**. `.next/static` (production client
+bundle) scanned: **no** `SUPABASE_SERVICE_ROLE_KEY` / `LITELLM_MASTER_KEY` / `LANGFUSE_SECRET_KEY` /
+`OPENROUTER` / `sk-…` patterns. No OpenRouter reference anywhere in `src/`.
+
+## 7. `.env.local` ignore result
+
+✅ `git check-ignore -v .env.local` → `.gitignore:11:.env*.local` (IGNORED). `git ls-files .env.local` →
+**empty** (not tracked). Never read aloud, printed, or committed.
+
+## 8. Vercel env var readiness result
+
+✅ `.env.local` (local) has all 6 required vars present & non-empty (checked by NAME only): `NEXT_PUBLIC_
+SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`,
+`RESEND_API_KEY`, `LEAD_NOTIFICATION_TO`. Both feature flags are unset locally → **default `false`** (the
+code checks `=== "true"`). LiteLLM/Langfuse vars absent → AI shows "not configured" (expected). The full
+Vercel list to set is in §21 below.
+
+## 9. Deployment checklist result
+
+✅ `docs/DEPLOYMENT_CHECKLIST.md` contains all required sections: GitHub push + Vercel import steps; env-var
+names (Production + Preview); `NEXT_PUBLIC_SITE_URL` post-preview update; "redeploy after env changes";
+Supabase migration status; Resend domain note; §11 Google OAuth setup (deferred); §12 AI provider /
+LiteLLM / OpenRouter setup (deferred); and the explicit note that `OPENROUTER_API_KEY` belongs in the
+LiteLLM **proxy** env, never this Next.js app. `.env.example` includes all required vars, both flags
+(=`false`), the deferred AI vars, no real values, and **no** `OPENROUTER_API_KEY` app var.
+
+## 10. Supabase / Auth readiness result
+
+✅ Code expects `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (legacy
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` fallback) + server-only `SUPABASE_SERVICE_ROLE_KEY` (only in
+`src/lib/supabase/server.ts`). Email/password login intact (`LoginForm` `signInWithPassword`). Migrations
+0001/0002/0004 applied & live-verified (Parts 4/8/15); 0003 optional. No destructive change made.
+
+## 11. Google Auth disabled / readiness result
+
+✅ Gated by `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` (default `false`). Single `signInWithOAuth` call site
+(`LoginForm.onGoogle`), guarded by `if (!GOOGLE_ENABLED) return` **and** only wired to the enabled
+button; the disabled button has `disabled`/`aria-disabled` and **no** handler. `/login` (flag false)
+renders one disabled "Continue with Google" + "Google sign-in coming soon". `/auth/callback` with a
+missing/invalid code → **307 → /login?error=oauth** (verified). No auto-admin / auto-mentor elevation:
+callback reads role from `profiles` and a missing role falls back to `/app` (least-privilege student),
+never mentor/admin; `getSessionUser` defaults to `student`. Documented in Part 18 §6.
+
+## 12. AI provider disabled / readiness result
+
+✅ Gated by `NEXT_PUBLIC_AI_KEYS_ENABLED` (default `false`). LiteLLM readiness reads server-only
+`LITELLM_PROXY_BASE_URL` + `LITELLM_MASTER_KEY` (no `NEXT_PUBLIC_`); Langfuse readiness reads server-only
+`LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY` (+ `LANGFUSE_OTEL_HOST`). No OpenRouter key required or
+referenced in the app; no direct OpenRouter frontend call. No raw provider/student key stored in Supabase
+(schema has only `litellm_key_id` + masked `litellm_virtual_key_hint`). Per-key model intact: default
+**$5**, configurable budget, configurable allowed models, dollar used/remaining fields, and the exact
+exhausted copy **"Budget exhausted. Please contact your BuildAI admin."**
+
+## 13. Route checks (dev server)
+
+✅ All **200**: `/`, `/programme`, `/curriculum`, `/certification`, `/for-colleges`, `/for-students`,
+`/for-mentors`, `/placements`, `/partners`, `/about`, `/contact`, `/privacy`, `/terms`, `/login`,
+`/sitemap.xml`, `/robots.txt`, `/opengraph-image`, `/twitter-image`. Unknown route → **404**.
+
+## 14. Header checks
+
+✅ Present on `/`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
+`X-Frame-Options: SAMEORIGIN`, `Permissions-Policy: camera=(), microphone=(), geolocation=(),
+browsing-topics=()`, `Strict-Transport-Security: max-age=63072000; includeSubDomains`. (No CSP — deferred,
+documented.)
+
+## 15. Login visibility result
+
+✅ Desktop nav `Login` link → `/login` (one server-rendered `href="/login"` in homepage HTML); mobile nav
+`Login` item present in `MobileNav.tsx` (client-rendered on open). `/login` renders; Google section is the
+disabled "coming soon" state while the flag is false.
+
+## 16. Dashboard redirect / session result
+
+✅ Logged-out `/app`, `/app/mentor`, `/app/admin` → **307 → /login** (middleware). Authenticated dashboard
+render + role routing + logout were verified **live in Parts 8/15/16** via per-user session replay; not
+re-run here (no test-account credentials are exposed in `.env.local` and this pass created no sessions).
+→ **Human-only:** a real password-login click-through of all three dashboards + logout after Vercel env
+setup (see §19).
+
+## 17. Form result
+
+✅ API contract re-verified live (non-writing cases, so **no rows created, no emails sent**): for all of
+pilot-inquiry / student-waitlist / mentor-application — **invalid → 400**, **honeypot (valid fields +
+`hp`) → 200 with no DB write** (early return; dev log shows no Resend/DB activity), **GET → 405**. The
+**valid → 200 + Supabase row + Resend accepted** path was intentionally **not** re-run here to avoid
+writing production rows / sending email during a read-only readiness pass — the form/API/validation code
+is byte-for-byte unchanged since Phase 1 and that path was verified live in **Parts 4, 5, 15, 16**.
+→ **Human-only:** one valid submission per form after Vercel env setup (see §19).
+
+## 18. Test data cleanup result
+
+✅ **None needed.** Only non-writing form cases were exercised (invalid/honeypot/GET) — zero Supabase rows
+created, zero emails sent. No temp scripts, no test users, no DB writes. Nothing to delete.
+
+## 19. Remaining human-only checks (after Vercel env setup)
+
+- Real password-login click-through of **student / mentor / admin** dashboards + **logout**.
+- One **valid** submission per form (pilot / student / mentor / contact) → confirm Supabase row + Resend
+  email arrival (Resend dashboard / `LEAD_NOTIFICATION_TO` inbox).
+- Visual DevTools-console pass on a couple of pages (close brief §12 "no console errors").
+
+## 20. Safe to import into Vercel?
+
+✅ **YES.** Clean build + lint; clean git on `main` synced to the exact origin; `.env.local` ignored & no
+secrets tracked or in the client bundle; all routes / headers / redirects correct; Google + AI flags OFF
+and their disabled states render; form API contract correct; checklist + `.env.example` complete. The
+import/deploy itself was intentionally **not** performed.
+
+## 21. Env vars to add in Vercel (Production + Preview) — names only
+
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server
+only), `NEXT_PUBLIC_SITE_URL` (set to the preview URL after the first deploy, then redeploy),
+`RESEND_API_KEY` (server only), `LEAD_NOTIFICATION_TO` (server only), `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=false`,
+`NEXT_PUBLIC_AI_KEYS_ENABLED=false`. Leave LiteLLM/Langfuse/Turnstile/OpenRouter **unset** (deferred). Do
+**not** add `OPENROUTER_API_KEY` to the app env.
+
+## 22. Deploy confirmation
+
+✅ **No deploy performed.** No Vercel project created or modified, no import, no production deploy, no live
+Google/OpenRouter/LiteLLM/LLM calls.
+
+## 23. Secret-exposure confirmation
+
+✅ **No secrets exposed or committed.** `.env.local` never printed/committed; values checked by NAME only.
+No real key values, provider keys, service-role values, or raw API keys in any tracked file or the client
+bundle. Flags remain OFF.
