@@ -1802,3 +1802,107 @@ npm run dev                                    # routes + redirects + form round
 ## 19. Git / deploy / SQL safety confirmation
 
 ✅ **No `git push`. No remote added. No deploy. No live SQL.** ✅ `.env.local` never committed/read/printed; no secret values appear in this doc, terminal output, or any commit. No raw keys generated, stored, or printed. `0004` was edited but **not applied** (still 404). Service-role key stayed server-side and confirmed absent from the client bundle. The one form-regression test row was deleted (0 residual). All Git work remains local on branch `main`.
+
+---
+
+# Part 15 — Phase 3A live AI access verification (2026-06-15)
+
+End-to-end verification of the corrected Phase-3A per-key dollar-budget control plane (commit `fa807e0`) against the **live Supabase project**, after the operator manually applied `0004_ai_access.sql`. **Verification only — no feature code changed (no issues found).** No `git push`, no remote, no deploy, no real LiteLLM/LLM calls, no secrets/emails printed, `.env.local` never committed.
+
+> ✅ **Result: Phase 3A passes live.** Schema, $5 default, configurable budget/models, dollar-spend fields, all five statuses, student own-read / admin read+write / mentor no-access RLS, the exhausted message, and both dashboards all behave exactly as specified. Test data cleaned up (0 residual); dev log clean.
+
+## 1. Commands run
+
+```bash
+git status ; node -v                          # clean · v22.12.0
+npm install                                    # up to date (no new deps)
+npm run build                                  # exit 0
+npm run lint                                   # exit 0 "No ESLint warnings or errors"
+git check-ignore -v .env.local                # .gitignore:11:.env*.local → IGNORED
+# env presence by NAME ONLY: Supabase/Resend present; LITELLM_*/LANGFUSE_* all ABSENT
+npm run dev                                     # dashboards exercised via real per-user session replay
+# Verification used @supabase/supabase-js (service role) for schema/admin-logic/RLS, and
+#   @supabase/ssr to mint real per-user session cookies (admin.generateLink + verifyOtp →
+#   setSession) replayed against the running dev server — same middleware + RLS path a browser hits.
+#   Temp scripts ran from the project dir and were deleted (never committed).
+```
+
+## 2. Migration applied
+
+✅ **Confirmed.** `student_ai_access` now exists (Part 14's `0004` probe returned 404; it now selects successfully). The operator applied it manually in the Supabase SQL Editor.
+
+## 3. Table / column verification
+
+✅ All 16 columns present and selectable: `id, user_id, profile_id, label, status, monthly_budget_usd, budget_period, allowed_models, last_synced_spend_usd, last_synced_at, litellm_key_id, litellm_virtual_key_hint, issued_at, revoked_at, created_at, updated_at`.
+
+## 4. Default $5 budget verification
+
+✅ Inserting a record with only `profile_id`/`user_id`/`label` yields DB defaults: **`monthly_budget_usd = 5`**, `budget_period = calendar_month`, `status = pending`, `last_synced_spend_usd = 0`.
+
+## 5. Budget update verification
+
+✅ Updated `monthly_budget_usd` 5 → **7**; read back $7. (Matches `updateAiAccessBudget`.)
+
+## 6. Allowed-model update verification
+
+✅ Set `allowed_models = {openai/gpt-4o-mini, anthropic/claude-3-haiku}`; read back as a 2-element array. (Matches `updateAiAccessModels`.)
+
+## 7. Status transition verification
+
+✅ The CHECK constraint **accepts all five** values (`pending, active, suspended, revoked, exhausted`) and **rejects** an invalid value (`bogus`). Transitions pending→active (stamps `issued_at`), active→suspended, suspended→revoked (stamps `revoked_at`) all succeed; the row is **never deleted** (count stays 1 — non-destructive).
+
+## 8. RLS verification (live, real per-user JWTs)
+
+| Check | Result |
+|---|---|
+| Student reads **only their own** record | ✅ 1 row |
+| Mentor reads AI access records | ✅ **0 rows** (no mentor policy — no access) |
+| Admin reads all records | ✅ sees the record |
+| Student attempts to modify budget | ✅ **blocked** (budget unchanged; no student write policy) |
+| Non-owner isolation | ✅ proven via the mentor (a different authenticated non-admin) seeing 0; policy is `is_self(profile_id)`. *(Only one student test user exists, so cross-student A/B isolation is shown structurally by the policy + the non-owner=0 result.)* |
+
+## 9. Student dashboard result
+
+✅ Logged in as the student (real session replay) at `/app`. With status active, budget $7, used $2: the AI access card shows **Active**, **$7.00** budget, **$2.00** used, **$5.00** remaining, **Calendar month** period, the allowed model, and the **masked key hint** (`sk-…t3st`). No full raw key appears. When `remaining ≤ 0` (used = $7) **and** when `status = exhausted`, the card shows the exact message: **"Budget exhausted. Please contact your BuildAI admin."**
+
+## 10. Admin dashboard result
+
+✅ Logged in as admin at `/app/admin`. The AI access section shows per-status counts (incl. **Exhausted**), the aggregate **Total budget / used / remaining** usage summary, and the per-key budget/used/remaining ($7.00 visible). LiteLLM + Langfuse show **Not configured** with the **"Live issuance and spend sync arrive in Phase 3B"** note.
+
+## 11. LiteLLM / Langfuse not-configured result
+
+✅ Both env groups absent → admin shows **Not configured** pills + the Phase-3B message; no live key issued; student card renders from stored metadata only. No 500s, no real proxy calls.
+
+## 12. Regression test results
+
+✅ Logged-out `/app`, `/app/admin`, `/app/mentor` → **307 → /login**. Role protection: student→`/app/admin` and student→`/app/mentor` → 307→`/app`; mentor→`/app` → 307→`/app/mentor`. Mentor dashboard renders with its "AI trace review — Coming later" card and **does not** see the student's key hint. All 13 public pages → **200**. Phase-1 forms: pilot/student/mentor/contact **valid → 200 + row + Resend accepted** (4 message ids logged), **honeypot → 200 no row**, **invalid → 400 no row**. Lead **handled → reopen** toggle works. Dev log clean (only intended `[email] Resend accepted …`). (Logout path unchanged and verified live in Part 8.)
+
+## 13. Security check results
+
+✅ `.env.local` ignored, never staged/printed. ✅ `LITELLM_MASTER_KEY` only in `src/lib/{litellm,ai/litellm}.ts`; `LANGFUSE_SECRET_KEY` only in `src/lib/langfuse.ts`; `SUPABASE_SERVICE_ROLE_KEY` only in `src/lib/supabase/server.ts`. ✅ `.next/static` scanned — **no** server-secret names and **no** raw/provider key patterns (`sk-…`). ✅ No raw API keys in docs. ✅ No stack traces/internal leaks; dev log clean. ✅ Student dashboard HTML contains no full key.
+
+## 14. Test data cleanup result
+
+✅ AI access: the verification record (and any student rows) **deleted** → `student_ai_access` back to **0 rows**. Leads: all `verify-p15` rows across `pilot_inquiries` / `student_waitlist` / `mentor_applications` **deleted** → **0 residual**. Honeypot created no row. No test users created or modified (sessions minted via magic-link OTP; no passwords changed). The 4 `VERIFY-P15` test emails to `LEAD_NOTIFICATION_TO` are subject-tagged and can be ignored. Temp verification scripts deleted (never committed).
+
+## 15. Build result
+
+✅ `npm run build` → **exit 0**.
+
+## 16. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 17. Remaining issues
+
+- 🟡 **Human click-through** (real password login → dashboards → logout) remains the only unautomated step — the session/RLS/role/render logic behind it is fully verified live here.
+- ⚪ **Phase 3B (deferred):** live LiteLLM virtual-key issuance + dollar-spend sync into `last_synced_spend_usd` + auto-flip to `exhausted`. Schema/actions/UI are ready.
+- ⚪ **Deferred (unchanged):** Google sign-in; Turnstile + rate limiting; payments; DPDP `/privacy`+`/terms` before query logging; production domain.
+
+## 18. Is Phase 3A fully verified live?
+
+✅ **Yes.** The per-key dollar-budget control plane is verified end-to-end against the live database: schema + $5 default + configurable budget/models + dollar-spend fields + all five statuses, student/admin/mentor RLS, the exact exhausted message, and both dashboards. No code changes were required.
+
+## 19. Git / deploy / LiteLLM safety confirmation
+
+✅ **No `git push`. No remote added. No deploy. No real LiteLLM/LLM calls** (env absent; only metadata exercised). ✅ `.env.local` never committed/read-aloud/printed; no secret values, test-user emails, or keys appear in this doc, terminal output, or any commit (only non-sensitive Resend message ids). No raw keys generated/stored/printed. Live DB writes were limited to clearly-tagged `verify-p15` test rows + one AI access verification record — **all deleted (0 residual)**; no users created/modified. This was a docs-only change. All Git work remains local on branch `main`.
