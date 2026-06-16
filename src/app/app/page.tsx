@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth";
 import { getStudentDashboardData } from "@/lib/dashboard/student";
-import { getStudentAiAccess } from "@/lib/ai/access";
+import { getStudentAiAccess, isAiKeysEnabled } from "@/lib/ai/access";
 import { StudentDashboard } from "@/components/dashboard/student/StudentDashboard";
 
 export const metadata: Metadata = { title: "Student Dashboard" };
@@ -14,5 +14,7 @@ export default async function StudentDashboardPage() {
     getStudentDashboardData(),
     getStudentAiAccess(),
   ]);
-  return <StudentDashboard data={data} aiAccess={aiAccess} />;
+  return (
+    <StudentDashboard data={data} aiAccess={aiAccess} aiKeysEnabled={isAiKeysEnabled()} />
+  );
 }

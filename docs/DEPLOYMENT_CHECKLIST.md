@@ -70,6 +70,9 @@ Leave unset for the preview. The app shows "not configured" / "deferred" states 
 
 | Variable | Status | Where it belongs |
 |---|---|---|
+| `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | **feature flag — default `false`** | public; flip to `true` only after §11 Google setup |
+| `NEXT_PUBLIC_AUTH_REDIRECT_URL` | **optional** | public; auto-derived from `NEXT_PUBLIC_SITE_URL`/origin if unset (§11) |
+| `NEXT_PUBLIC_AI_KEYS_ENABLED` | **feature flag — default `false`** | public; flip to `true` only after §12 LiteLLM is ready |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | **deferred** | only honeypot is active today |
 | `TURNSTILE_SECRET_KEY` | **deferred** | server-only when implemented |
 | `LITELLM_PROXY_BASE_URL` | **deferred (Phase 3B)** | the Next.js app |
@@ -80,6 +83,8 @@ Leave unset for the preview. The app shows "not configured" / "deferred" states 
 | `OPENROUTER_API_KEY` (or any raw provider key) | **deferred** | the **LiteLLM proxy** environment — **NOT** this app, **never** the browser |
 
 > Students only ever receive BuildAI virtual keys via the gateway — never raw provider keys.
+> The two `NEXT_PUBLIC_*_ENABLED` flags are **config gates**: with them `false` (default) the
+> app ships the disabled/“not enabled yet” states and **requires no Google or AI credentials**.
 
 ---
 
@@ -121,8 +126,11 @@ CLI is **not** required/linked.
 ## 7. Explicitly deferred (do NOT enable for this preview)
 
 - **OpenRouter / LiteLLM live key issuance + real LLM calls** — Phase 3B. Phase 3A stores
-  metadata only; admin/student AI cards show "not configured / not issued".
-- **Google sign-in (OAuth)** — deferred. Email+password auth only.
+  metadata only; admin/student AI cards show "not configured / not issued / not enabled".
+  The architecture is ready (see §12) but **off** until `NEXT_PUBLIC_AI_KEYS_ENABLED=true` + LiteLLM env.
+- **Google sign-in (OAuth)** — **implemented but feature-flagged OFF** (Phase 4B). Email+password
+  always works; the login page shows a disabled "Continue with Google" + "coming soon" until
+  `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` and the Supabase Google provider is set up (see §11).
 - **Cloudflare Turnstile + server-side rate limiting** — deferred. Honeypot is the only spam guard.
 - **Payments** — deferred.
 
@@ -155,5 +163,69 @@ next/font, next/og, and inline styles; **deferred** to a later carefully-tested 
       partners, about, contact, privacy, terms, login, sitemap.xml, robots.txt, OG/twitter images).
 - [ ] Logged-out `/app*` → `/login`; each role lands on its own dashboard; wrong-role redirects; logout.
 - [ ] One real submit of each form → Supabase row + Resend email; honeypot drops silently.
-- [ ] Student/admin AI access cards render "not configured / not issued".
+- [ ] Student/admin AI access cards render "not configured / not issued / not enabled".
+- [ ] Disabled "Continue with Google" button shows on `/login` (does not break email+password login).
 - [ ] DevTools console clean; security headers present (Network tab → response headers).
+
+---
+
+## 11. Google OAuth setup (enable later — NOT required for this phase)
+
+Google sign-in is **implemented and shipped dark**. Email+password works regardless. This phase needs
+**no Google credentials**. To turn Google on later:
+
+1. **Create a Google OAuth web client** — Google Cloud Console → APIs & Services → Credentials →
+   **Create credentials → OAuth client ID → Web application**.
+2. **Authorized JavaScript origins** — add each environment's origin:
+   - Local: `http://localhost:3000`
+   - Preview: your Vercel preview URL, e.g. `https://buildai-<hash>.vercel.app`
+   - Production: the final custom domain later, e.g. `https://buildai.global`
+3. **Authorized redirect URI** — add your **Supabase** callback:
+   `https://<your-project-ref>.supabase.co/auth/v1/callback` (Supabase brokers the OAuth, then
+   redirects back to this app's `/auth/callback` SSR route).
+4. **Configure the Supabase Google provider** — Supabase Dashboard → **Authentication → Providers →
+   Google** → paste the Google **client ID + client secret** → enable. *(The Google client secret lives
+   in Supabase only — never in this Next.js app or the browser.)*
+5. **Configure Supabase Site URL + Redirect URLs** — Supabase Dashboard → **Authentication → URL
+   Configuration**:
+   - **Site URL**: your primary URL (prod domain, or the preview while testing).
+   - **Redirect URLs** (add all that apply): `http://localhost:3000/**`, the Vercel preview URL `/**`,
+     and the production domain `/**` (the app returns to `/auth/callback`).
+6. **Set the app flag** — `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` in `.env.local` (local) and in Vercel
+   (Production + Preview). Optionally set `NEXT_PUBLIC_AUTH_REDIRECT_URL` to the full callback URL; if
+   unset it's derived from `NEXT_PUBLIC_SITE_URL` / the live origin.
+7. **Redeploy** so the public flag is rebuilt into the client bundle, then test the round-trip:
+   `/login` → "Continue with Google" → Google consent → back to `/auth/callback` → role-based dashboard.
+
+> Role routing after Google login is unchanged: a user's role comes only from their `profiles` row
+> (the auth trigger seeds the least-privileged `student`). **No auto-admin**, no auto-elevation; a user
+> with no profile/role lands on the student dashboard (least privilege), never mentor/admin.
+
+---
+
+## 12. AI provider setup (enable later — NOT required for this phase)
+
+The AI-key layer is **architecturally complete and shipped dark**. This phase needs **no OpenRouter key
+and no running LiteLLM proxy**. To go live later (Phase 3B):
+
+1. **Create an OpenRouter key later** — in the OpenRouter dashboard. It is a **provider/upstream** secret.
+2. **Configure a LiteLLM Proxy** with OpenRouter as the upstream provider. The `OPENROUTER_API_KEY`
+   goes in the **LiteLLM proxy's** environment/config — **never** in this Next.js app, **never** a
+   `NEXT_PUBLIC_` var, **never** in Supabase, **never** committed.
+3. **Set a LiteLLM master key** on the proxy.
+4. **Add only the proxy URL + master key to this app's SERVER env** — `LITELLM_PROXY_BASE_URL` and
+   `LITELLM_MASTER_KEY` (server-only; no `NEXT_PUBLIC_`). Optionally add the Langfuse keys for traces.
+5. **Enable `NEXT_PUBLIC_AI_KEYS_ENABLED=true`** only after the proxy is reachable. State machine:
+   flag off → "AI key issuance is not enabled yet"; flag on + no LiteLLM env → "LiteLLM not configured";
+   flag on + LiteLLM env → "Ready for Phase 3B".
+6. **Test disposable key issuance** — issue a BuildAI virtual key for a test student via the admin
+   AI access panel; confirm only a **masked hint** is stored, never the raw key.
+7. **Test spend sync** — confirm dollar spend reads back into `last_synced_spend_usd` and the
+   used/remaining figures update.
+8. **Confirm raw keys are never persisted** — `student_ai_access` has no raw-key column by design; the
+   raw virtual key is shown to the admin **once** and never written to Supabase.
+9. **Confirm exhausted-budget behavior** — when remaining ≤ 0 (or status `exhausted`), the student card
+   shows exactly: **"Budget exhausted. Please contact your BuildAI admin."**
+
+> Default per-key budget is **$5**, configurable per key, with a configurable allowed-models list.
+> Students always use BuildAI virtual keys via LiteLLM — never raw provider keys, never in the browser.

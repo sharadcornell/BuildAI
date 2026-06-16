@@ -14,9 +14,11 @@ import { StudentTasks } from "./StudentTasks";
 export function StudentDashboard({
   data,
   aiAccess,
+  aiKeysEnabled,
 }: {
   data: StudentDashboardData;
   aiAccess: StudentAiAccess | null;
+  aiKeysEnabled: boolean;
 }) {
   const firstName = data.fullName?.trim().split(/\s+/)[0] ?? null;
 
@@ -30,8 +32,8 @@ export function StudentDashboard({
       <div className="grid gap-6 lg:grid-cols-2">
         <StudentOverviewCard data={data} />
 
-        {/* AI access — live metadata (or a clear "not issued yet" state) */}
-        <StudentAiAccessCard access={aiAccess} />
+        {/* AI access — feature-gated; live metadata, "not issued", or "not enabled" */}
+        <StudentAiAccessCard access={aiAccess} aiKeysEnabled={aiKeysEnabled} />
       </div>
 
       <div className="mt-6">

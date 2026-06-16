@@ -43,15 +43,43 @@ export type StudentAiAccess = {
 };
 
 export type AiConfigStatus = {
+  /** App-level feature flag (NEXT_PUBLIC_AI_KEYS_ENABLED). Gates the whole AI-key layer. */
+  aiKeysEnabled: boolean;
   litellmConfigured: boolean;
   langfuseConfigured: boolean;
 };
 
+/**
+ * App-level feature flag for the AI-key layer. Read from a NEXT_PUBLIC_ var so the
+ * student/admin UI can gate cleanly. OFF by default — when off the UI shows
+ * "AI key issuance is not enabled yet" and no issuance path is implied. This is a
+ * UI/intent gate only; live issuance ALSO requires the server-only LiteLLM env.
+ */
+export function isAiKeysEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_AI_KEYS_ENABLED === "true";
+}
+
 export function getAiConfigStatus(): AiConfigStatus {
   return {
+    aiKeysEnabled: isAiKeysEnabled(),
     litellmConfigured: isLiteLLMConfigured(),
     langfuseConfigured: isLangfuseConfigured(),
   };
+}
+
+/** Three-state readiness for the AI-key layer, derived from the flag + LiteLLM env. */
+export type AiReadiness = "disabled" | "litellm_missing" | "ready";
+
+/**
+ * Combined readiness:
+ *  - "disabled"        → feature flag off (default). Nothing live; UI says "not enabled yet".
+ *  - "litellm_missing" → flag on but LiteLLM proxy env absent. UI says "LiteLLM not configured".
+ *  - "ready"           → flag on AND LiteLLM env present. Phase 3B can issue live keys.
+ */
+export function aiReadiness(config: AiConfigStatus): AiReadiness {
+  if (!config.aiKeysEnabled) return "disabled";
+  if (!config.litellmConfigured) return "litellm_missing";
+  return "ready";
 }
 
 type AiAccessRow = {

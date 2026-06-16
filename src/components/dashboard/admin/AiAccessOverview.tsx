@@ -6,7 +6,11 @@ import {
   updateAiAccessBudget,
   updateAiAccessModels,
 } from "@/lib/ai/access-actions";
-import { DEFAULT_BUDGET_USD, type AdminAiAccessOverview } from "@/lib/ai/access";
+import {
+  DEFAULT_BUDGET_USD,
+  aiReadiness,
+  type AdminAiAccessOverview,
+} from "@/lib/ai/access";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -59,6 +63,27 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 // shown — only masked hints — and no real LiteLLM key is issued in this phase.
 export function AiAccessOverview({ data }: { data: AdminAiAccessOverview }) {
   const { config, counts, usage, recent, unassigned } = data;
+  const readiness = aiReadiness(config);
+
+  // Headline state for the whole AI-key layer (feature flag + LiteLLM env).
+  const READINESS_BANNER: Record<typeof readiness, { label: string; body: string }> = {
+    disabled: {
+      label: "Feature disabled",
+      body:
+        "AI key issuance is not enabled yet (NEXT_PUBLIC_AI_KEYS_ENABLED is off). The controls below manage planned metadata only — no live key is issued. Enable the flag and configure LiteLLM to go live in Phase 3B.",
+    },
+    litellm_missing: {
+      label: "LiteLLM not configured",
+      body:
+        "The AI-keys feature flag is on, but the LiteLLM proxy env is absent — so no live keys are issued and spend isn't synced. Records here remain planned (pending) metadata. Add the LiteLLM proxy URL + master key to go live in Phase 3B.",
+    },
+    ready: {
+      label: "Ready for Phase 3B",
+      body:
+        "Feature flag on and LiteLLM proxy configured. Live key issuance and spend sync can be enabled in Phase 3B. Until then, records below are metadata only.",
+    },
+  };
+  const banner = READINESS_BANNER[readiness];
 
   return (
     <OffsetCard>
@@ -67,19 +92,36 @@ export function AiAccessOverview({ data }: { data: AdminAiAccessOverview }) {
         <Badge>{counts.total} key{counts.total === 1 ? "" : "s"}</Badge>
       </div>
 
+      {/* Feature-readiness headline (flag + LiteLLM env) */}
+      <div
+        className={
+          "mt-4 border-2 p-3 " +
+          (readiness === "ready"
+            ? "border-brand-yellow/60 bg-brand-yellow/5"
+            : "border-dashed border-white/25")
+        }
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-display text-lg uppercase">AI key issuance</span>
+          <span
+            className={
+              "shrink-0 border px-2 py-0.5 text-xs font-bold uppercase tracking-wide " +
+              (readiness === "ready"
+                ? "border-brand-yellow text-brand-yellow"
+                : "border-white/30 text-brand-paper/60")
+            }
+          >
+            {banner.label}
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-brand-paper/60">{banner.body}</p>
+      </div>
+
       {/* Infra config status */}
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <ConfigPill label="LiteLLM gateway" configured={config.litellmConfigured} />
         <ConfigPill label="Langfuse traces" configured={config.langfuseConfigured} />
       </div>
-      {!config.litellmConfigured ? (
-        <p className="mt-3 text-xs text-brand-paper/55">
-          LiteLLM isn&apos;t configured, so no live keys are issued and spend isn&apos;t synced.
-          Records created here are <span className="font-bold">planned (pending)</span> metadata with
-          a dollar budget — they don&apos;t mint a real key.{" "}
-          <span className="font-bold">Live issuance and spend sync arrive in Phase 3B.</span>
-        </p>
-      ) : null}
 
       {/* Status counts */}
       <div className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-5">

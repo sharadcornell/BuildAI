@@ -2082,3 +2082,156 @@ The local side is fully ready: commit `684e243` on branch `main`, `origin` corre
 ## 10. Deploy confirmation
 
 ✅ **No deploy performed.** No Vercel import, no production deploy, no live LLM calls. (Push to GitHub is pending operator authentication — see §9.)
+
+---
+
+# Part 18 — Feature-flagged Google Auth and AI provider readiness (2026-06-15)
+
+Phase 4B: made the app ready for **Google sign-in** (Supabase OAuth) and **LiteLLM/OpenRouter-backed
+student keys** behind config flags, so both can be switched on later **without any real credentials
+now**. Email+password auth, role routing, public pages, lead forms, Resend, Supabase, and the Phase-3A
+AI scaffold are all untouched and still green. **No real OpenRouter/LiteLLM/LLM calls, no Google
+credentials required, no secrets committed, no destructive DB changes, no deploy.**
+
+## 1. Commands run
+
+```bash
+git status ; git remote -v ; node -v ; npm -v   # clean · origin=sharadcornell/BuildAI · v22.12.0 · 10.9.0
+npm install                                      # up to date (no new deps)
+npm run build                                    # exit 0 (baseline) → exit 0 (after changes); /auth/callback registered
+npm run lint                                     # exit 0 "No ESLint warnings or errors"
+git check-ignore -v .env.local                   # .gitignore:11:.env*.local → IGNORED
+git ls-files .env.local                          # empty (not tracked)
+# secret scans over the repo (excl. HANDOFF) → only empty/commented variable NAMES, no values
+# OpenRouter usage grep over src/ → none; client-component server-import grep → none
+npm run dev                                       # routes/redirects/forms via curl, flags OFF then ON
+#   + scanned .next/static for server-secret names / raw-key patterns → clean
+```
+
+## 2. Files changed
+
+| File | Change |
+|---|---|
+| `src/app/auth/callback/route.ts` | **New** — SSR OAuth callback (`exchangeCodeForSession`) for the @supabase/ssr PKCE flow. Role-based redirect; **no auto-elevation** (missing role → `/app`, never mentor/admin). Inert until Google is enabled + a `?code` arrives; on error/no-code → `/login?error=oauth`. |
+| `src/components/auth/LoginForm.tsx` | Added a config-gated **Google sign-in** section + `initialNotice` prop. Flag off → **disabled** "Continue with Google" + "coming soon", no handler, never calls OAuth. Flag on → `signInWithOAuth({provider:"google", options:{redirectTo}})` via the existing browser client. Email+password path unchanged. |
+| `src/app/login/page.tsx` | Reads `?error=` and passes a friendly notice to `LoginForm` (now `async`, awaits `searchParams`). |
+| `src/lib/ai/access.ts` | Added `isAiKeysEnabled()` (reads `NEXT_PUBLIC_AI_KEYS_ENABLED`), `aiKeysEnabled` on `AiConfigStatus`, and `aiReadiness()` → `"disabled" | "litellm_missing" | "ready"`. |
+| `src/app/app/page.tsx` | Passes `isAiKeysEnabled()` into the student dashboard. |
+| `src/components/dashboard/student/StudentDashboard.tsx` | Threads `aiKeysEnabled` to the AI card. |
+| `src/components/dashboard/student/StudentAiAccessCard.tsx` | Flag-off state: **"AI API access is not enabled yet."** (takes precedence over the record); else existing "Not issued" / record / exact exhausted message. |
+| `src/components/dashboard/admin/AiAccessOverview.tsx` | New **AI key issuance** readiness banner: "Feature disabled" / "LiteLLM not configured" / "Ready for Phase 3B". Budget/model controls + usage summary kept. |
+| `.env.example` | Added `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=false`, optional `NEXT_PUBLIC_AUTH_REDIRECT_URL` (commented), `NEXT_PUBLIC_AI_KEYS_ENABLED=false`, plus expanded OpenRouter "proxy-only / never browser / never Supabase / never commit" notes. |
+| `docs/DEPLOYMENT_CHECKLIST.md` | New §11 Google OAuth setup + §12 AI provider setup; deferred-env table + deferred-features + smoke test updated. |
+| `docs/HANDOFF.md` | This Part 18. |
+
+**Not changed:** auth/role logic (`auth.ts`, `middleware.ts`), Supabase helpers, the Phase-3A AI server
+helpers (`ai/litellm.ts`, `langfuse.ts`, `access-actions.ts`), validation, forms/API routes, all
+migrations, brand/marketing copy. No new npm dependency. No SQL run.
+
+## 3. Google Auth readiness implemented
+
+✅ Config-gated end to end. A new `/auth/callback` SSR route completes the @supabase/ssr PKCE exchange and
+redirects by role. The login page shows a Google section that is **disabled by default** and only becomes
+live when the flag is on. The Google **client ID/secret live in Supabase**, never in this app/browser.
+
+## 4. Feature flag behavior
+
+✅ `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` (default `false`): off → disabled button + "coming soon", **no OAuth
+call** (no handler attached, button `disabled`, handler also early-returns). On → active button →
+`signInWithOAuth`. ✅ `NEXT_PUBLIC_AI_KEYS_ENABLED` (default `false`): off → "not enabled yet"; on + no
+LiteLLM env → "LiteLLM not configured"; on + LiteLLM env → "Ready for Phase 3B".
+
+## 5. Login page result
+
+✅ Email+password unchanged and working. Flag **off** (verified live): one "Continue with Google" button,
+disabled, with "Google sign-in coming soon." Flag **on** (verified live with the var set): active button,
+no coming-soon note. `/login?error=oauth` shows "Google sign-in didn't complete. Please try again." No
+server secrets in the rendered HTML.
+
+## 6. No-profile / no-role behavior
+
+✅ No crash, **no auto-elevation**. The callback reads the role from `profiles`; a present role → that
+dashboard; a missing role → `/app` (student dashboard, least privilege) — never mentor/admin. The auth
+trigger (0002) already seeds new users as `student`, and `getSessionUser` defaults to `student`; **no
+auto-admin** anywhere. Logged-out `/app*` still 307 → `/login` (verified).
+
+## 7. AI provider readiness implemented
+
+✅ The AI-key layer is architecturally final and shipped dark. `isAiKeysEnabled()` + `aiReadiness()` drive
+a three-state admin banner and the student "not enabled yet" state. Existing per-key **$5 default** budget,
+configurable budget, configurable allowed models, dollar-spend usage, exact exhausted message, admin usage
+summary, and "no raw keys" guarantees are all retained.
+
+## 8. OpenRouter / LiteLLM deferred behavior
+
+✅ No OpenRouter key required or referenced anywhere in `src/` (grep: none). No LiteLLM proxy required —
+helpers return `not_configured` and make no network call when env is absent. `OPENROUTER_API_KEY` is
+documented as **LiteLLM-proxy-only**: never in this app, never `NEXT_PUBLIC_`, never in Supabase, never
+committed. No real LLM/LiteLLM/OpenRouter calls were made.
+
+## 9. Env documentation result
+
+✅ `.env.example` now documents both flags, the optional redirect URL (auto-derived if unset), that Google
+client ID/secret belong in the Supabase Dashboard, that Supabase redirect URLs must include local +
+preview + prod, and the strengthened OpenRouter proxy-only rules. No real values.
+
+## 10. Deployment checklist update
+
+✅ `docs/DEPLOYMENT_CHECKLIST.md`: §11 (create Google OAuth web client → JS origins → Supabase provider →
+Supabase Site/Redirect URLs → set flag → redeploy; local/preview/prod redirect examples; "not required
+this phase") and §12 (OpenRouter later → LiteLLM proxy upstream → master key → app server env → enable
+flag → test issuance/spend/no-persist/exhausted). Deferred-env table + deferred-features + smoke test
+updated to reflect the flags.
+
+## 11. Build result
+
+✅ `npm run build` → **exit 0**. `/auth/callback` and dynamic `/login` register; all dashboards compile.
+
+## 12. Lint result
+
+✅ `npm run lint` → **exit 0** — "No ESLint warnings or errors."
+
+## 13. Regression test result
+
+✅ All 14 public routes → **200**. Logged-out `/app`, `/app/mentor`, `/app/admin` → **307 → /login**.
+`/auth/callback` with no code → **307 → /login?error=oauth**. Forms (code path unchanged): **invalid → 400**,
+**honeypot (valid fields + hp) → 200 with no DB write** (36 ms early return), **GET → 405**. Disabled Google
+button does not break the login page. (Authenticated dashboard visual pass needs real login creds — only
+additive props changed; prior parts verified the live dashboards.)
+
+## 14. Security check result
+
+✅ `.env.local` git-ignored and **not tracked/staged**. ✅ Secret-value scan (excl. HANDOFF) → only empty/
+commented variable **names**, no values. ✅ No OpenRouter reference in `src/`; OpenRouter key not required by
+the app. ✅ No `"use client"` file imports any server-only AI/Supabase-admin helper. ✅ `.next/static`
+scanned → **no** `SERVICE_ROLE`/`LITELLM_MASTER`/`LANGFUSE_SECRET`/`OPENROUTER`/`sk-…` (public flags are
+inlined, as intended). ✅ No role auto-escalation introduced — auth default is least-privilege `student`;
+callback never elevates.
+
+## 15. Remaining setup steps for Google Auth
+
+1. Create a Google OAuth **web client** (JS origins: local/preview/prod). 2. Add the **Supabase callback**
+(`https://<ref>.supabase.co/auth/v1/callback`) as an authorized redirect URI. 3. Configure the **Supabase
+Google provider** (client ID + secret). 4. Set Supabase **Site URL + Redirect URLs** for every env.
+5. `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` (+ optional `NEXT_PUBLIC_AUTH_REDIRECT_URL`). 6. Redeploy + test
+the round-trip. (Full detail: checklist §11.)
+
+## 16. Remaining setup steps for LiteLLM / OpenRouter
+
+1. Create an OpenRouter key (upstream secret). 2. Stand up a **LiteLLM proxy** with OpenRouter upstream
+(`OPENROUTER_API_KEY` in the **proxy** env). 3. Set a LiteLLM master key. 4. Add only
+`LITELLM_PROXY_BASE_URL` + `LITELLM_MASTER_KEY` to the app's **server** env (optionally Langfuse).
+5. `NEXT_PUBLIC_AI_KEYS_ENABLED=true` once the proxy is reachable. 6. Test issuance / spend sync /
+no-persist / exhausted behavior. (Full detail: checklist §12.)
+
+## 17. No real external calls
+
+✅ **Confirmed.** No Google OAuth round-trip was performed (flag toggled only to verify UI rendering), no
+LiteLLM proxy was contacted, no OpenRouter key was used, and no real LLM call was made. The callback route
+was exercised only with a missing/invalid code (→ redirect).
+
+## 18. No secrets committed
+
+✅ **Confirmed.** `.env.local` never read/printed/committed. Only `.env.example` (placeholder names) is
+tracked. No secret values, no raw keys, no Google client secret appear in any changed file or commit.
+All work is on branch `main`; origin is exactly `https://github.com/sharadcornell/BuildAI.git`.

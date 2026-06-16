@@ -35,9 +35,29 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export function StudentAiAccessCard({
   access,
+  aiKeysEnabled,
 }: {
   access: StudentAiAccess | null;
+  aiKeysEnabled: boolean;
 }) {
+  // Feature flag off (default) → explicit "not enabled yet" state. Takes
+  // precedence over any record so nothing implies live access is available.
+  if (!aiKeysEnabled) {
+    return (
+      <OffsetCard accent>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-display text-2xl uppercase">AI access</h3>
+          <Badge>Not enabled</Badge>
+        </div>
+        <p className="mt-3 text-sm text-brand-paper/80">
+          AI API access is not enabled yet. When BuildAI turns it on, you&apos;ll get a key
+          with a dollar usage budget here — you never handle raw provider keys.
+        </p>
+        <p className="mt-3 text-xs text-brand-paper/50">Nothing to set up right now.</p>
+      </OffsetCard>
+    );
+  }
+
   // No record yet → explicit "coming later / not issued" state.
   if (!access) {
     return (
